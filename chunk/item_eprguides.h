@@ -17,8 +17,8 @@ public:
         CHUNK_READPROP("Parameter count", 4);
         STUFF_INTO(GetProperty("Parameter count"), paramCount, uint32_t);
         for(uint32_t i = 0; i < paramCount; i++) {
-            CHUNK_READPROP(QString("Offset %1 A").arg(i, 4, 0), 8);
-            CHUNK_READPROP(QString("Offset %1 B").arg(i, 4, 0), 8);
+            CHUNK_READPROP(QString("Offset %1 A").arg(i, 4, 10, QChar('0')), 8);
+            CHUNK_READPROP(QString("Offset %1 B").arg(i, 4, 10, QChar('0')), 8);
         }
         SetName(GetProperty("Name"));
     }
