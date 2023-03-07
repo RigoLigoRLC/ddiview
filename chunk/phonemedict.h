@@ -5,6 +5,7 @@
 #include "phonemegroup.h"
 #include "item_phoneticunit.h"
 #include "item_directory.h"
+#include "item_eprguides.h"
 
 class ChunkPhonemeDict : public BaseChunk {
 public:
@@ -36,6 +37,7 @@ public:
         }
 
         // EpR Guides
+        CHUNK_READCHILD(ItemEprGuidesGroup, this);
     }
 
     virtual QString Description() {

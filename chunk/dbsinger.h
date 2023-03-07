@@ -16,6 +16,8 @@ public:
         ChunkChunkArray::Read(file);
         CHUNK_READPROP("unk6", 4);
         CHUNK_READCHILD(ChunkPhonemeDict, this);
+        CHUNK_READPROP("Hash store", 260);
+
     }
 
     virtual QString Description() {

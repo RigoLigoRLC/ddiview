@@ -36,6 +36,7 @@ set(PROJECT_SOURCES
         chunk/item_directory.h
         chunk/item_phonemegroup.h
         chunk/item_groupedphoneme.h
+        chunk/item_eprguides.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
