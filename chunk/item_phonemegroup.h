@@ -13,6 +13,7 @@ public:
     static QByteArray DefaultSignature() { return ""; }
 
     virtual void Read(FILE *file) {
+        BaseChunk::Read(file);
         // Read group name
         CHUNK_READPROP("Name length", 4);
         uint32_t length; STUFF_INTO(GetProperty("Name length"), length, uint32_t);

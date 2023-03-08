@@ -1,5 +1,8 @@
 #include <QFileDialog>
+#include <QProgressDialog>
+#include <QFile>
 #include "mainwindow.h"
+#include "chunk/chunkcreator.h"
 #include "parser/ddi.h"
 #include "./ui_mainwindow.h"
 
@@ -20,7 +23,9 @@ MainWindow::~MainWindow()
 void MainWindow::SetupUI()
 {
     mLblStatusFilename = new QLabel();
-    ui->statusbar->addWidget(mLblStatusFilename);
+    mLblBlockOffset = new QLabel();
+    ui->statusbar->addWidget(mLblStatusFilename, 999);
+    ui->statusbar->addWidget(mLblBlockOffset);
 
     resize(1000, 800);
 }
@@ -66,10 +71,21 @@ void MainWindow::on_actionOpen_triggered()
     if(filename.isEmpty())
         return;
 
-    mLblStatusFilename->setText(filename.section('/', -1));
+    QString fileBasename = filename.section('/', -1);
+    QFile fileForSize(filename);
+    QProgressDialog progDlg(QString("Reading %1...").arg(fileBasename),
+                            QString(),
+                            0,
+                            fileForSize.size(),
+                            this);
+    progDlg.setWindowModality(Qt::WindowModal);
+    progDlg.setMinimumDuration(0);
+    mLblStatusFilename->setText(fileBasename);
 
     // TODO: use factory method
+    ChunkCreator::Get()->SetProgressDialog(&progDlg);
     auto root = Parse(filename);
+    ChunkCreator::Get()->SetProgressDialog(nullptr);
 
     BuildTree(root, nullptr);
 }
@@ -87,5 +103,7 @@ void MainWindow::on_treeStructure_currentItemChanged(QTreeWidgetItem *current, Q
                   + i.value().toHex(' ');
         ui->listProperties->addItem(propText);
     }
+
+    mLblBlockOffset->setText(QString::number(chunk->GetOriginalOffset(), 16).toUpper());
 }
 

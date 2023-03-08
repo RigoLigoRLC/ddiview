@@ -1,0 +1,29 @@
+#ifndef DBVVQMORPHPHU_H
+#define DBVVQMORPHPHU_H
+
+#include "chunkarray.h"
+
+class ChunkDBVVQMorphPhU : public ChunkChunkArray {
+public:
+    explicit ChunkDBVVQMorphPhU() : ChunkChunkArray() {
+
+    }
+
+    static QByteArray DefaultSignature() { return "VQMu"; }
+
+    virtual void Read(FILE *file) {
+        ReadBlockSignature(file);
+        ReadArrayHead(file);
+        CHUNK_READPROP("unk1", 4);
+        ReadArrayBody(file, 0);
+        ReadStringName(file);
+    }
+
+    virtual QString Description() {
+        return "DBVVQMorphPhU";
+    }
+
+    static BaseChunk* Make() { return new ChunkDBVVQMorphPhU; }
+};
+
+#endif // DBVVQMORPHPHU_H

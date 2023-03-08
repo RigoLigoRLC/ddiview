@@ -13,10 +13,19 @@ public:
     static QByteArray DefaultSignature() { return "DBSe"; }
 
     virtual void Read(FILE* file) {
-        ChunkChunkArray::Read(file);
+        ReadBlockSignature(file);
+        ReadArrayHead(file);
         CHUNK_READPROP("unk6", 4);
+
+        // Emulate Vocaloid behavior
+        HasLeadingQword = false;
+
         CHUNK_READCHILD(ChunkPhonemeDict, this);
         CHUNK_READPROP("Hash store", 260);
+
+        HasLeadingQword = true;
+
+        ReadArrayBody(file, 0);
 
     }
 

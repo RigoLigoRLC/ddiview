@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QMap>
+#include <QProgressDialog>
 #include "basechunk.h"
 
 typedef BaseChunk*(*MakeMethod)() ;
@@ -16,8 +17,12 @@ public:
 
     BaseChunk *ReadFor(QByteArray signature, FILE* file);
 
+    void SetProgressDialog(QProgressDialog *dlg) { mProgressDlg = dlg; }
+
 private:
     static ChunkCreator* mInstance;
+
+    QProgressDialog *mProgressDlg;
 
     QMap<QByteArray, MakeMethod> FactoryMethods;
     template <typename T> void AddToFactory();

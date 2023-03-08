@@ -31,6 +31,19 @@ set(PROJECT_SOURCES
         chunk/dbsinger.h
         chunk/phonemedict.h
         chunk/phonemegroup.h
+        chunk/emptychunk.h
+        chunk/dbvoice.h
+        chunk/dbvarticulation.h
+        chunk/dbvarticulationphu.h
+        chunk/dbvarticulationphupart.h
+        chunk/dbvstationary.h
+        chunk/dbvstationaryphu.h
+        chunk/dbvstationaryphupart.h
+        chunk/dbvvqmorph.h
+        chunk/dbvvqmorphphu.h
+        chunk/dbvvqmorphphupart.h
+        chunk/dbtimbre.h
+        chunk/dbtimbremodel.h
 
         chunk/item_phoneticunit.h
         chunk/item_directory.h

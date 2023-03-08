@@ -13,6 +13,7 @@ public:
 
     virtual void Read(FILE *file) {
         uint32_t paramCount;
+        BaseChunk::Read(file);
         CHUNK_READPROP("Name", 32);
         CHUNK_READPROP("Parameter count", 4);
         STUFF_INTO(GetProperty("Parameter count"), paramCount, uint32_t);

@@ -32,6 +32,6 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-    QLabel *mLblStatusFilename;
+    QLabel *mLblStatusFilename, *mLblBlockOffset;
 };
 #endif // MAINWINDOW_H

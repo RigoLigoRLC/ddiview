@@ -13,10 +13,10 @@ public:
     static QByteArray DefaultSignature() { return "ARR "; }
 
     virtual void Read(FILE* file) {
-        if(HasLeadingQword)
-            CHUNK_READPROP("LeadingQword", 8);
         ReadBlockSignature(file);
         ReadArrayHead(file);
+        ReadArrayBody(file, 0);
+        ReadStringName(file);
     }
 
     virtual QString Description() {
@@ -33,24 +33,33 @@ protected:
         CHUNK_READPROP("UseEmptyChunk", 4);
     }
 
-    void ReadArrayBody(FILE* file) {
+    void ReadArrayBody(FILE* file, uint32_t maxCount = 1) {
         char signatureBuf[4];
         uint32_t count;
+        BaseChunk::Read(file);
 
         // Read subchunk count
         CHUNK_READPROP("Count", 4);
         STUFF_INTO(GetProperty("Count"), count, uint32_t);
 
-        // Read signature first
-        fpos_t pos;
-        fgetpos(file, &pos);
-        // Skip Leading QWORD if needed
-        if(HasLeadingQword) fseek(file, 8, SEEK_CUR);
-        fread(signatureBuf, 1, 4, file);
-        fsetpos(file, &pos);
 
         //FIXME: JUST FOR TEST
-        ChunkCreator::Get()->ReadFor(signatureBuf, file);
+        for(uint32_t ii = 0; ii < (maxCount == 0 ? count : maxCount); ii++) {
+            // Read signature first
+            fpos_t pos;
+            fgetpos(file, &pos);
+            // Skip Leading QWORD if needed
+            if(HasLeadingQword) fseek(file, 8, SEEK_CUR);
+            fread(signatureBuf, 1, 4, file);
+            fsetpos(file, &pos);
+
+            auto sig = QByteArray(signatureBuf, 4);
+            auto chk = ChunkCreator::Get()->ReadFor(sig, file);
+            if(chk)
+                Children.append(chk);
+            else
+                break;
+        }
     }
 };
 

@@ -12,7 +12,7 @@ public:
     static QByteArray DefaultSignature() { return ""; }
 
     virtual void Read(FILE *file) {
-
+        BaseChunk::Read(file);
     }
 
     virtual QString Description() {

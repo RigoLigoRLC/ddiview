@@ -12,6 +12,7 @@ public:
     static QByteArray DefaultSignature() { return ""; }
 
     virtual void Read(FILE *file) {
+        BaseChunk::Read(file);
         // Read phoneme name
         CHUNK_READPROP("Length", 4);
         uint32_t length; STUFF_INTO(GetProperty("Length"), length, uint32_t);

@@ -12,6 +12,7 @@ public:
     static QByteArray DefaultSignature() { return ""; }
 
     virtual void Read(FILE *file) {
+        BaseChunk::Read(file);
         QByteArray tmp(18, 0);
         fread(tmp.data(), 1, 18, file);
         mName = tmp;
