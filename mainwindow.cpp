@@ -71,6 +71,14 @@ void MainWindow::on_actionOpen_triggered()
     if(filename.isEmpty())
         return;
 
+    if(ui->treeStructure->topLevelItemCount())
+        delete ui->treeStructure->topLevelItem(0)->data(0, BaseChunk::ItemChunkRole).value<BaseChunk*>();
+
+    // FIXME: If the signal is connected when doing clear, the clear method will deadlock.
+    disconnect(ui->treeStructure, &QTreeWidget::currentItemChanged, this, &MainWindow::on_treeStructure_currentItemChanged);
+    ui->treeStructure->clear();
+    connect(ui->treeStructure, &QTreeWidget::currentItemChanged, this, &MainWindow::on_treeStructure_currentItemChanged);
+
     QString fileBasename = filename.section('/', -1);
     QFile fileForSize(filename);
     QProgressDialog progDlg(QString("Reading %1...").arg(fileBasename),
@@ -93,6 +101,9 @@ void MainWindow::on_actionOpen_triggered()
 
 void MainWindow::on_treeStructure_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous)
 {
+    if(!current)
+        return;
+
     auto chunk = current->data(0, BaseChunk::ItemChunkRole).value<BaseChunk*>();
     auto props = chunk->GetPropertiesMap();
 

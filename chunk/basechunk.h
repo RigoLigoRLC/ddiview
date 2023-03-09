@@ -39,6 +39,12 @@ public:
         this->mSignature = that.mSignature;
     }
 
+    ~BaseChunk() {
+        foreach(auto i, Children) {
+            if(i) delete i;
+        }
+    }
+
     static bool HasLeadingQword;
     const static int ItemChunkRole;
 

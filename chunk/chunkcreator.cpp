@@ -60,7 +60,6 @@ ChunkCreator *ChunkCreator::Get()
 BaseChunk *ChunkCreator::ReadFor(QByteArray signature, FILE *file)
 {
     if(mProgressDlg) mProgressDlg->setValue(ftell(file));
-    auto pos = ftell(file); if(pos == 0x30a5a) __debugbreak();
     if(!FactoryMethods.contains(signature))
         return nullptr;
     auto ret = FactoryMethods[signature]();
