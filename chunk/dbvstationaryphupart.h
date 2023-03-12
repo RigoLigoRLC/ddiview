@@ -15,10 +15,10 @@ public:
         uint32_t dataCount, unk15;
         ReadBlockSignature(file);
         ReadArrayHead(file);
-        CHUNK_READPROP("unk1", 8);
+        CHUNK_TREADPROP("unk1", 8, PropHex64);
         CHUNK_READPROP("unk2", 2);
-        CHUNK_TREADPROP("Average pitch 1", 4, PropF32);
-        CHUNK_TREADPROP("Average pitch 2", 4, PropF32);
+        CHUNK_TREADPROP("mPitch", 4, PropF32);
+        CHUNK_TREADPROP("Average pitch", 4, PropF32);
         CHUNK_READPROP("unk5", 4);
         CHUNK_TREADPROP("Dynamic", 4, PropF32);
         CHUNK_TREADPROP("Tempo", 4, PropF32);

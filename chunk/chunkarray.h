@@ -30,7 +30,7 @@ public:
 protected:
     void ReadArrayHead(FILE* file) {
         CHUNK_READPROP("unk4", 4);
-        CHUNK_READPROP("UseEmptyChunk", 4);
+        CHUNK_TREADPROP("UseEmptyChunk", 4, PropU32Int);
     }
 
     void ReadArrayBody(FILE* file, uint32_t maxCount = 1) {
@@ -39,7 +39,7 @@ protected:
         BaseChunk::Read(file);
 
         // Read subchunk count
-        CHUNK_READPROP("Count", 4);
+        CHUNK_TREADPROP("Count", 4, PropU32Int);
         STUFF_INTO(GetProperty("Count").data, count, uint32_t);
 
 
