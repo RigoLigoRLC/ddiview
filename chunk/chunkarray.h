@@ -40,7 +40,7 @@ protected:
 
         // Read subchunk count
         CHUNK_READPROP("Count", 4);
-        STUFF_INTO(GetProperty("Count"), count, uint32_t);
+        STUFF_INTO(GetProperty("Count").data, count, uint32_t);
 
 
         //FIXME: JUST FOR TEST

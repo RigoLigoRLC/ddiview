@@ -24,13 +24,13 @@ public:
         auto PhonemeDir = new ItemDirectory;
         Children.append(PhonemeDir);
         uint32_t PhonemeCount;
-        STUFF_INTO(GetProperty("Phoneme count"), PhonemeCount, uint32_t);
+        STUFF_INTO(GetProperty("Phoneme count").data, PhonemeCount, uint32_t);
         for(uint32_t ii = 0; ii < PhonemeCount; ii++) {
             CHUNK_READCHILD(ItemPhoneticUnit, PhonemeDir);
         }
 
         // Detect flag
-        uint32_t flags; STUFF_INTO(GetProperty("Flags"), flags, uint32_t);
+        uint32_t flags; STUFF_INTO(GetProperty("Flags").data, flags, uint32_t);
 
         if(flags & 0x04) { // Phonetic group
             CHUNK_READCHILD(ChunkPhonemeGroup, this);

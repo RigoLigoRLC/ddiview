@@ -23,6 +23,8 @@ set(PROJECT_SOURCES
         parser/ddi.cpp
         parser/ddi.h
 
+        chunk/propertytype.h
+        chunk/propertytype.cpp
         chunk/chunkcreator.h
         chunk/chunkcreator.cpp
 

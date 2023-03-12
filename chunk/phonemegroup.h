@@ -19,7 +19,7 @@ public:
 
         // Groups
         uint32_t GroupCount;
-        STUFF_INTO(GetProperty("Group count"), GroupCount, uint32_t);
+        STUFF_INTO(GetProperty("Group count").data, GroupCount, uint32_t);
         for(uint32_t ii = 0; ii < GroupCount; ii++) {
             CHUNK_READCHILD(ItemPhonemeGroup, this);
         }

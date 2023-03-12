@@ -24,7 +24,7 @@ public:
         CHUNK_READPROP("unk7", 4);
         ReadArrayBody(file, 0);
         CHUNK_READPROP("Data count", 4);
-        STUFF_INTO(GetProperty("Data count"), dataCount, uint32_t);
+        STUFF_INTO(GetProperty("Data count").data, dataCount, uint32_t);
         CHUNK_READPROP("Data", 8 * dataCount);
         CHUNK_READPROP("SND Sample rate", 4);
         CHUNK_READPROP("SND Channel count", 2);
@@ -32,7 +32,7 @@ public:
         CHUNK_READPROP("SND DDB offset", 8);
         CHUNK_READPROP("SND DDB offset+800", 8);
         CHUNK_READPROP("unk15", 4);
-        STUFF_INTO(GetProperty("unk15"), unk15, uint32_t);
+        STUFF_INTO(GetProperty("unk15").data, unk15, uint32_t);
         CHUNK_READPROP("unk16", 4 * unk15 * 4); // 4 * unk15 * u32
         ReadStringName(file);
     }

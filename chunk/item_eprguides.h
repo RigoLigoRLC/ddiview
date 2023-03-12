@@ -16,12 +16,12 @@ public:
         BaseChunk::Read(file);
         CHUNK_READPROP("Name", 32);
         CHUNK_READPROP("Parameter count", 4);
-        STUFF_INTO(GetProperty("Parameter count"), paramCount, uint32_t);
+        STUFF_INTO(GetProperty("Parameter count").data, paramCount, uint32_t);
         for(uint32_t i = 0; i < paramCount; i++) {
             CHUNK_READPROP(QString("Offset %1 A").arg(i, 4, 10, QChar('0')), 8);
             CHUNK_READPROP(QString("Offset %1 B").arg(i, 4, 10, QChar('0')), 8);
         }
-        SetName(GetProperty("Name"));
+        SetName(GetProperty("Name").data);
     }
 
     virtual QString Description() {
@@ -42,7 +42,7 @@ public:
     virtual void Read(FILE *file) {
         uint32_t groupCount;
         CHUNK_READPROP("Count", 4);
-        STUFF_INTO(GetProperty("Count"), groupCount, uint32_t);
+        STUFF_INTO(GetProperty("Count").data, groupCount, uint32_t);
         for(uint32_t i = 0; i < groupCount; i++) {
             CHUNK_READCHILD(ItemEprGuide, this);
         }

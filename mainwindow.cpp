@@ -110,9 +110,15 @@ void MainWindow::on_treeStructure_currentItemChanged(QTreeWidgetItem *current, Q
     ui->listProperties->clear();
     for(auto i = props.cbegin(); i != props.cend(); i++) {
         QString propText;
-        propText += i.key() + tr(" (%1 bytes)\n").arg(i.value().size())
-                  + i.value().toHex(' ');
-        ui->listProperties->addItem(propText);
+        propText += i.key() + tr(" (%1 bytes)\n").arg(i.value().data.size())
+                  + FormatProperty(i.value());
+        auto item = new QListWidgetItem(propText);
+
+        // Make those "known values" (with proper typing) a bit more eye catching
+        if(i.value().type != PropRawHex)
+            item->setBackground(QColor(200, 255, 200));
+        ui->listProperties->addItem(item);
+
     }
 
     mLblBlockOffset->setText(QString::number(chunk->GetOriginalOffset(), 16).toUpper());

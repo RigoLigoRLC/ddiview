@@ -11,7 +11,17 @@ BaseChunk* Parse(QString path)
         return false;
     }
 
-    BaseChunk* chunk = ChunkCreator::Get()->ReadFor("DBSe", file);
+    // Read signature first
+    fpos_t pos;
+    char signatureBuf[4];
+    fgetpos(file, &pos);
+    // Skip Leading QWORD if needed
+    if(BaseChunk::HasLeadingQword) fseek(file, 8, SEEK_CUR);
+    fread(signatureBuf, 1, 4, file);
+    fsetpos(file, &pos);
+
+    auto sig = QByteArray(signatureBuf, 4);
+    auto chunk = ChunkCreator::Get()->ReadFor(sig, file);
 
     fclose(file);
 
