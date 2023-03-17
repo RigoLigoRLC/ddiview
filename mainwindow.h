@@ -23,6 +23,8 @@ protected:
 
     void BuildTree(BaseChunk* chunk, QTreeWidgetItem* into);
 
+    void PatternedRecursionOnProperties(QString pattern, std::function<void (void *, BaseChunk *, QString)> iterfunc, void* iterCtx);
+
 private slots:
     void on_actionExit_triggered();
 
