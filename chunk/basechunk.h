@@ -53,7 +53,7 @@ public:
         this->mSignature = that.mSignature;
     }
 
-    ~BaseChunk() {
+    virtual ~BaseChunk() {
         foreach(auto i, Children) {
             if(i) delete i;
         }
@@ -73,6 +73,9 @@ public:
     void SetProperty(QString name, ChunkProperty data) { mAdditionalProperties[name] = data; }
     uint64_t GetOriginalOffset() { return mOriginalOffset; }
     const QMap<QString, ChunkProperty>& GetPropertiesMap() { return mAdditionalProperties; }
+    BaseChunk* GetChildByName(QString name) {
+        foreach(auto i, Children) if(i->mName == name) return i; return nullptr;
+    }
 
     QVector<BaseChunk*> Children;
 

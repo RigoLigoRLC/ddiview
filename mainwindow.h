@@ -35,5 +35,7 @@ private slots:
 private:
     Ui::MainWindow *ui;
     QLabel *mLblStatusFilename, *mLblBlockOffset;
+
+    BaseChunk* mTreeRoot;
 };
 #endif // MAINWINDOW_H
