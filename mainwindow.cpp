@@ -166,7 +166,7 @@ void MainWindow::on_actionPropDist_triggered()
         QMessageBox::critical(this, tr("Invalid pattern"), tr("Empty property name."));
         return;
     }
-    // Assume dot is right after wildcards, and only maximum of two asterisks are allowed
+    // Assume dot is right after wildcards, and only maximum of four asterisks are allowed
     int asteriskCount = 0;
     bool seekingForExtraAsterisks = false;
     for(auto i = splitByDot[0].constEnd(); ;) {
@@ -178,7 +178,7 @@ void MainWindow::on_actionPropDist_triggered()
             }
         }
         else if(!seekingForExtraAsterisks) seekingForExtraAsterisks = true;
-        if(asteriskCount >= 3) {
+        if(asteriskCount >= 5) {
             QMessageBox::critical(this, tr("Invalid pattern"), tr("Too many \"*\" wildcards."));
             return;
         }
