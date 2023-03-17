@@ -21,7 +21,7 @@ public:
         HasLeadingQword = false;
 
         CHUNK_READCHILD(ChunkPhonemeDict, this);
-        //CHUNK_READPROP("Hash store", 260); // Does not exist on Miku V4P
+        CHUNK_READPROP("Hash store", 260);
 
         HasLeadingQword = true;
 

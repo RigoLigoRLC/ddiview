@@ -23,7 +23,6 @@ public:
         CHUNK_TREADPROP("Dynamic", 4, PropF32);
         CHUNK_TREADPROP("Tempo", 4, PropF32);
         ReadArrayBody(file, 0);
-        CHUNK_READPROP("unk9", 4);
         CHUNK_TREADPROP("Data count", 4, PropU32Int);
         STUFF_INTO(GetProperty("Data count").data, dataCount, uint32_t);
         CHUNK_READPROP("Data", 8 * dataCount);
@@ -31,7 +30,10 @@ public:
         CHUNK_TREADPROP("SND Channel count", 2, PropU16Int);
         CHUNK_READPROP("unk12", 4);
         CHUNK_TREADPROP("SND DDB offset", 8, PropHex64);
-        CHUNK_READPROP("unk16", 4  * 4); // 4 * u32
+        CHUNK_TREADPROP("SND DDB offset+800", 8, PropHex64);
+        CHUNK_READPROP("unk15", 4);
+        STUFF_INTO(GetProperty("unk15").data, unk15, uint32_t);
+        CHUNK_READPROP("unk16", 4 * unk15 * 4); // 4 * unk15 * u32
         ReadStringName(file);
     }
 
