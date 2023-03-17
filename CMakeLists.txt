@@ -19,6 +19,9 @@ set(PROJECT_SOURCES
         mainwindow.cpp
         mainwindow.h
         mainwindow.ui
+        statisticsresultdialog.h
+        statisticsresultdialog.cpp
+        statisticsresultdialog.ui
 
         parser/ddi.cpp
         parser/ddi.h

@@ -21,7 +21,7 @@ BaseChunk* Parse(QString path)
     fsetpos(file, &pos);
 
     auto sig = QByteArray(signatureBuf, 4);
-    auto chunk = ChunkCreator::Get()->ReadFor(sig, file);
+    auto chunk = ChunkCreator::Get()->ReadFor("DBSe", file);
 
     fclose(file);
 

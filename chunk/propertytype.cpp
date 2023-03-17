@@ -1,6 +1,25 @@
 #include "propertytype.h"
 #include "basechunk.h"
 
+const char* PropertyTypeNames[] = {
+    "PropRawHex",
+    "PropU8Int",
+    "PropS8Int",
+    "PropHex8",
+    "PropU16Int",
+    "PropS16Int",
+    "PropHex16",
+    "PropU32Int",
+    "PropS32Int",
+    "PropHex32",
+    "PropU64Int",
+    "PropS64Int",
+    "PropHex64",
+    "PropF32",
+    "PropF64",
+    "PropString",
+};
+
 QString FormatProperty(const ChunkProperty &prop)
 {
     QString ret;
@@ -66,6 +85,10 @@ QString FormatProperty(const ChunkProperty &prop)
     }
     case PropF64: {
         double x; STUFF_INTO(data, x, decltype(x)); ret = ret.number(x);
+        break;
+    }
+    case PropString: {
+        QString x(data); ret = x;
         break;
     }
     }

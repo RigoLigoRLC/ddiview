@@ -9,8 +9,12 @@ enum PropertyType {
     PropU16Int, PropS16Int, PropHex16,
     PropU32Int, PropS32Int, PropHex32,
     PropU64Int, PropS64Int, PropHex64,
-    PropF32, PropF64
+    PropF32, PropF64,
+    PropString,
+
+    PropertyTypeCount
 };
+extern const char* PropertyTypeNames[];
 struct ChunkProperty;
 QString FormatProperty(const ChunkProperty &prop);
 
