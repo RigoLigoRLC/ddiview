@@ -1,6 +1,7 @@
 #include <QFileDialog>
 #include <QProgressDialog>
 #include <QFile>
+#include <QInputDialog>
 #include "mainwindow.h"
 #include "chunk/chunkcreator.h"
 #include "parser/ddi.h"
@@ -122,5 +123,20 @@ void MainWindow::on_treeStructure_currentItemChanged(QTreeWidgetItem *current, Q
     }
 
     mLblBlockOffset->setText(QString::number(chunk->GetOriginalOffset(), 16).toUpper());
+}
+
+
+void MainWindow::on_actionPropDist_triggered()
+{
+    bool ok;
+    QString pattern;
+    pattern = QInputDialog::getText(this,
+                                    tr("Property Distribution"),
+                                    tr("Enter pattern.\n"
+                                       "Examples:\n\n"
+                                       "/voice/articulation/**.unk12 (The unk12 property of every child under each chunk in /voice/articulation)\n"
+                                       "/voice/stationary/normal/*.Index (The Index property of each item under /voice/stationary)"));
+
+
 }
 

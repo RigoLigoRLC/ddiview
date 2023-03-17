@@ -30,6 +30,8 @@ private slots:
 
     void on_treeStructure_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous);
 
+    void on_actionPropDist_triggered();
+
 private:
     Ui::MainWindow *ui;
     QLabel *mLblStatusFilename, *mLblBlockOffset;
