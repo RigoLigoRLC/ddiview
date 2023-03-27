@@ -23,6 +23,8 @@ protected:
 
     void BuildTree(BaseChunk* chunk, QTreeWidgetItem* into);
 
+    BaseChunk *SearchForChunkByPath(QStringList paths);
+
     void PatternedRecursionOnProperties(QString pattern, std::function<void (void *, BaseChunk *, QString)> iterfunc, void* iterCtx);
 
 private slots:
@@ -33,6 +35,12 @@ private slots:
     void on_treeStructure_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous);
 
     void on_actionPropDist_triggered();
+
+    void on_btnShowDdb_toggled(bool checked);
+
+    void on_btnShowMediaTool_toggled(bool checked);
+
+    void on_actionArticulationTable_triggered();
 
 private:
     Ui::MainWindow *ui;

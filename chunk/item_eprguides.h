@@ -46,6 +46,8 @@ public:
         for(uint32_t i = 0; i < groupCount; i++) {
             CHUNK_READCHILD(ItemEprGuide, this);
         }
+
+        SetName("<EpR Guides>");
     }
 
     virtual QString Description() {

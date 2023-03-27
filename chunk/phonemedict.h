@@ -28,6 +28,7 @@ public:
         for(uint32_t ii = 0; ii < PhonemeCount; ii++) {
             CHUNK_READCHILD(ItemPhoneticUnit, PhonemeDir);
         }
+        PhonemeDir->SetName("<Phonemes>");
 
         // Detect flag
         uint32_t flags; STUFF_INTO(GetProperty("Flags").data, flags, uint32_t);
@@ -38,6 +39,8 @@ public:
 
         // EpR Guides
         CHUNK_READCHILD(ItemEprGuidesGroup, this);
+
+        SetName("<Phoneme Dictionary>");
     }
 
     virtual QString Description() {

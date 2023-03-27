@@ -23,6 +23,8 @@ public:
         for(uint32_t ii = 0; ii < GroupCount; ii++) {
             CHUNK_READCHILD(ItemPhonemeGroup, this);
         }
+
+        SetName("<Phoneme Groups>");
     }
 
     virtual QString Description() {

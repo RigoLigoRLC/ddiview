@@ -9,7 +9,7 @@
 #include "parser/ddi.h"
 #include "./ui_mainwindow.h"
 #include "statisticsresultdialog.h"
-#include "widget/qangledheadertablewidget.h"
+#include "articulationtabledialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -59,6 +59,28 @@ void MainWindow::BuildTree(BaseChunk *chunk, QTreeWidgetItem *into)
     foreach(auto i, chunk->Children) {
         BuildTree(i, rootItem);
     }
+}
+
+BaseChunk *MainWindow::SearchForChunkByPath(QStringList paths)
+{
+    BaseChunk* baseSearchChunk = mTreeRoot;
+    if(baseSearchChunk == nullptr) {
+        QMessageBox::critical(this, tr("No root"), tr("Tree root chunk is non existent."));
+        return nullptr;
+    }
+    foreach(auto i, paths) {
+        if(i.isEmpty()) {
+            QMessageBox::critical(this, tr("Invalid pattern"), tr("Empty name in path chain."));
+            return nullptr;
+        }
+        baseSearchChunk = baseSearchChunk->GetChildByName(i);
+        if(baseSearchChunk == nullptr) {
+            QMessageBox::critical(this, tr("Specified chunk not found"), tr("Search for \"%1\" returned nothing.").arg(i));
+            return nullptr;
+        }
+    }
+
+    return baseSearchChunk;
 }
 
 void MainWindow::PatternedRecursionOnProperties(QString pattern, std::function<void (void *, BaseChunk *, QString)> iterfunc, void *iterCtx)
@@ -112,22 +134,9 @@ void MainWindow::PatternedRecursionOnProperties(QString pattern, std::function<v
     paths.removeLast();
 
     // Find the specified base search chunk
-    BaseChunk* baseSearchChunk = mTreeRoot;
-    if(baseSearchChunk == nullptr) {
-        QMessageBox::critical(this, tr("No root"), tr("Tree root chunk is non existent."));
+    BaseChunk* baseSearchChunk = SearchForChunkByPath(paths);
+    if(baseSearchChunk == nullptr)
         return;
-    }
-    foreach(auto i, paths) {
-        if(i.isEmpty()) {
-            QMessageBox::critical(this, tr("Invalid pattern"), tr("Empty name in path chain."));
-            return;
-        }
-        baseSearchChunk = baseSearchChunk->GetChildByName(i);
-        if(baseSearchChunk == nullptr) {
-            QMessageBox::critical(this, tr("Specified chunk not found"), tr("Search for \"%1\" returned nothing.").arg(i));
-            return;
-        }
-    }
 
     // Decide recursion depth. Use iteration instead of recursion.
     QVector<QVector<BaseChunk*>*> childrenStack;
@@ -305,6 +314,49 @@ void MainWindow::on_btnShowMediaTool_toggled(bool checked)
 
 void MainWindow::on_actionArticulationTable_triggered()
 {
+    QStringList phonemeList;
+    QVector<int> supportMatrix;
 
+    BaseChunk *phonemesChunk = SearchForChunkByPath({ "<Phoneme Dictionary>", "<Phonemes>" }),
+            *articulationChunk = SearchForChunkByPath({ "voice", "articulation" });
+    if(phonemesChunk == nullptr || articulationChunk == nullptr)
+        return;
+
+
+
+    // Obtain all phonemes
+    foreach(const auto &i, phonemesChunk->Children) {
+        phonemeList << i->GetName();
+    }
+
+    supportMatrix.resize(phonemeList.size() * phonemeList.size());
+    supportMatrix.fill(-1);
+
+    foreach(const auto &i, articulationChunk->Children) {
+        // No articulation beginning with this
+        if(i->Children.size() == 0) {
+            auto begin = phonemeList.indexOf(i->GetName()) * phonemeList.size();
+            // Fill entire row with -2
+            for(auto j = 0; j < phonemeList.size(); j++)
+                supportMatrix[begin + j] = -2;
+            continue;
+        }
+        foreach(const auto &j, i->Children) {
+            if(j->GetSignature() == "ART ") {
+                // TODO: Triphoneme
+                continue;
+            }
+            auto data = j->GetProperty("Count").data;
+            int count;
+            STUFF_INTO(data, count, 4);
+            supportMatrix[phonemeList.indexOf(i->GetName()) * phonemeList.size() +
+                    phonemeList.indexOf(j->GetName())] = count;
+        }
+    }
+
+    ArticulationTableDialog dlg;
+    dlg.setWindowTitle("Articulation Table - " + mLblStatusFilename->text());
+    dlg.SetSupportMatrix(phonemeList, supportMatrix);
+    dlg.exec();
 }
 

@@ -16,12 +16,17 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 
 set(PROJECT_SOURCES
         main.cpp
-        mainwindow.cpp
-        mainwindow.h
-        mainwindow.ui
-        statisticsresultdialog.h
-        statisticsresultdialog.cpp
-        statisticsresultdialog.ui
+        ui/uicommon.h
+        ui/uicommon.cpp
+        ui/mainwindow.cpp
+        ui/mainwindow.h
+        ui/mainwindow.ui
+        ui/statisticsresultdialog.h
+        ui/statisticsresultdialog.cpp
+        ui/statisticsresultdialog.ui
+        ui/articulationtabledialog.h
+        ui/articulationtabledialog.cpp
+        ui/articulationtabledialog.h
 
         parser/ddi.cpp
         parser/ddi.h

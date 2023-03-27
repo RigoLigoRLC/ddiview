@@ -73,6 +73,7 @@ public:
     void SetProperty(QString name, ChunkProperty data) { mAdditionalProperties[name] = data; }
     uint64_t GetOriginalOffset() { return mOriginalOffset; }
     const QMap<QString, ChunkProperty>& GetPropertiesMap() { return mAdditionalProperties; }
+    QByteArray GetSignature() { return mSignature; }
     BaseChunk* GetChildByName(QString name) {
         foreach(auto i, Children) if(i->mName == name) return i; return nullptr;
     }
