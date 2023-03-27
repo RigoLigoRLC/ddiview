@@ -1,4 +1,7 @@
 #include "articulationtabledialog.h"
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QTextStream>
 #include "ui_articulationtabledialog.h"
 #include "uicommon.h"
 
@@ -45,4 +48,52 @@ void ArticulationTableDialog::SetSupportMatrix(QStringList phonemeList, const QV
                             ));
         }
     }
+
+    m_phonemes = phonemeList;
+    m_supportMatrix = supportMatrix;
 }
+
+void ArticulationTableDialog::on_btnExportCsv_clicked()
+{
+    QFileDialog filedlg;
+    QString filename;
+
+    filename = filedlg.getSaveFileName(
+            this,
+            tr("Save CSV..."),
+            QDir::currentPath(),
+            "Comma separated values (*.csv)");
+
+    if(filename.isEmpty())
+        return;
+
+    QFile file(filename);
+    file.open(QFile::WriteOnly);
+    if(!file.isWritable()) {
+        QMessageBox::critical(this, tr("Failed to export articulations"), tr("File is not writable"));
+        return;
+    }
+
+    QTextStream stream(&file);
+
+    stream << ",";
+
+    // Escape commas
+    auto phonemes = m_phonemes;
+    for(auto &i : phonemes) {
+        i.replace(QLatin1String(","), QLatin1String("\\,"));
+        stream << i << ',';
+    }
+    stream << '\n';
+
+    for(int i = 0; i < phonemes.size(); i++) {
+        stream << phonemes[i] << ',';
+        for(int j = 0; j < phonemes.size(); j++) {
+            stream << m_supportMatrix[i * phonemes.size() + j] << ',';
+        }
+        stream << '\n';
+    }
+
+    file.close();
+}
+

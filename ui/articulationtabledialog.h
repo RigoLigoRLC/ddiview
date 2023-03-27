@@ -17,8 +17,14 @@ public:
 
     void SetSupportMatrix(QStringList phonemeList, const QVector<int>&);
 
+private slots:
+    void on_btnExportCsv_clicked();
+
 private:
     Ui::ArticulationTableDialog *ui;
+
+    QVector<int> m_supportMatrix;
+    QStringList m_phonemes;
 };
 
 #endif // ARTICULATIONTABLEDIALOG_H
