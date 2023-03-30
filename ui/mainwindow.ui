@@ -246,8 +246,15 @@
     <addaction name="actionPropDist"/>
     <addaction name="actionArticulationTable"/>
    </widget>
+   <widget class="QMenu" name="menuExtraction">
+    <property name="title">
+     <string>Extraction</string>
+    </property>
+    <addaction name="actionExtractAllSamples"/>
+   </widget>
    <addaction name="menuOpen"/>
    <addaction name="menuStatistics"/>
+   <addaction name="menuExtraction"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionOpen">
@@ -279,6 +286,11 @@
   <action name="actionExportJson">
    <property name="text">
     <string>Export to JSON</string>
+   </property>
+  </action>
+  <action name="actionExtractAllSamples">
+   <property name="text">
+    <string>Extract all samples</string>
    </property>
   </action>
  </widget>

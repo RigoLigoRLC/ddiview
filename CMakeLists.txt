@@ -16,6 +16,9 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 
 set(PROJECT_SOURCES
         main.cpp
+        common.h
+        common.cpp
+
         ui/uicommon.h
         ui/uicommon.cpp
         ui/mainwindow.cpp
@@ -66,6 +69,7 @@ set(PROJECT_SOURCES
         chunk/item_phonemegroup.h
         chunk/item_groupedphoneme.h
         chunk/item_eprguides.h
+        chunk/item_articulationsection.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

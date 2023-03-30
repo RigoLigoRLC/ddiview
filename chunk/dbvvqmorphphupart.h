@@ -31,7 +31,7 @@ public:
         CHUNK_TREADPROP("SND Sample rate", 4, PropU32Int);
         CHUNK_TREADPROP("SND Channel count", 2, PropU16Int);
         CHUNK_READPROP("unk12", 4);
-        CHUNK_TREADPROP("SND DDB offset", 8, PropHex64);
+        CHUNK_TREADPROP("SND Sample offset", 8, PropHex64);
         CHUNK_READPROP("unk14", 4);
         CHUNK_READPROP("unk15", 4);
         CHUNK_READPROP("unk16", 4);

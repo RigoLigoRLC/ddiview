@@ -27,6 +27,8 @@ protected:
 
     void PatternedRecursionOnProperties(QString pattern, std::function<void (void *, BaseChunk *, QString)> iterfunc, void* iterCtx);
 
+    bool EnsureDdbExists();
+
 private slots:
     void on_actionExit_triggered();
 
@@ -46,10 +48,18 @@ private slots:
 
     void on_actionExportJson_triggered();
 
+    void on_actionExtractAllSamples_triggered();
+
 private:
     Ui::MainWindow *ui;
-    QLabel *mLblStatusFilename, *mLblBlockOffset;
+    QLabel *mLblStatusFilename,
+           *mLblStatusDdbExists,
+           *mLblBlockOffset;
 
     BaseChunk* mTreeRoot;
+
+private:
+    QString mDatabaseDirectory;
+
 };
 #endif // MAINWINDOW_H

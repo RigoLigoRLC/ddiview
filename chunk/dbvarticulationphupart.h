@@ -2,6 +2,8 @@
 #define DBVARTICULATIONPHUPART_H
 
 #include "chunkarray.h"
+#include "item_directory.h"
+#include "item_articulationsection.h"
 
 class ChunkDBVArticulationPhUPart : public ChunkChunkArray {
 public:
@@ -13,7 +15,8 @@ public:
     virtual QByteArray ObjectSignature() { return ClassSignature(); }
 
     virtual void Read(FILE *file) {
-        uint32_t dataCount, unk15;
+        uint32_t dataCount, sectionCount;
+        ItemDirectory* sectionDir = nullptr;
         ReadBlockSignature(file);
         ReadArrayHead(file);
         CHUNK_TREADPROP("unk1", 8, PropHex64);
@@ -29,12 +32,22 @@ public:
         CHUNK_READPROP("Data", 8 * dataCount);
         CHUNK_TREADPROP("SND Sample rate", 4, PropU32Int);
         CHUNK_TREADPROP("SND Channel count", 2, PropU16Int);
-        CHUNK_TREADPROP("SND Sample Count", 4, PropU32Int);
+        CHUNK_TREADPROP("SND Sample count", 4, PropU32Int);
         CHUNK_TREADPROP("SND Sample offset", 8, PropHex64);
         CHUNK_TREADPROP("SND Sample offset+800", 8, PropHex64);
-        CHUNK_TREADPROP("unk15", 4, PropU32Int);
-        STUFF_INTO(GetProperty("unk15").data, unk15, uint32_t);
-        CHUNK_READPROP("unk16", 4 * unk15 * 4); // 4 * unk15 * u32
+        CHUNK_TREADPROP("Guessed_Section count", 4, PropU32Int);
+        STUFF_INTO(GetProperty("Guessed_Section count").data, sectionCount, uint32_t);
+        if(sectionCount) {
+            sectionDir = new ItemDirectory;
+            sectionDir->SetName("<sections>");
+            Children.append(sectionDir);
+        }
+        for(int i = 0; i < sectionCount; i++) {
+            auto artSec = new ItemArticulationSection;
+            artSec->Read(file);
+            artSec->SetName(QString("<section %1>").arg(i));
+            sectionDir->Children.append(artSec);
+        }
         ReadStringName(file);
     }
 

@@ -13,6 +13,7 @@
 #include "articulationtabledialog.h"
 #include "ddiexportjsonoptionsdialog.h"
 #include "propertycontextmenu.h"
+#include "common.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -33,8 +34,10 @@ MainWindow::~MainWindow()
 void MainWindow::SetupUI()
 {
     mLblStatusFilename = new QLabel();
+    mLblStatusDdbExists = new QLabel();
     mLblBlockOffset = new QLabel();
-    ui->statusbar->addWidget(mLblStatusFilename, 999);
+    ui->statusbar->addWidget(mLblStatusFilename);
+    ui->statusbar->addWidget(mLblStatusDdbExists, 999);
     ui->statusbar->addWidget(mLblBlockOffset);
 
     ui->grpDdb->setHidden(true);
@@ -186,6 +189,23 @@ void MainWindow::PatternedRecursionOnProperties(QString pattern, std::function<v
     }
 }
 
+bool MainWindow::EnsureDdbExists()
+{
+    bool ret;
+    ret = QFile::exists(mDatabaseDirectory + '/' + mLblStatusFilename->text().section('.', 0, -2) + ".ddb");
+    auto font = mLblStatusDdbExists->font();
+    if(ret) {
+        font.setBold(false);
+        mLblStatusDdbExists->setText(tr("DDB Exists"));
+        mLblStatusDdbExists->setStyleSheet("color: green; font-weight: 500;");
+    } else {
+        font.setBold(true);
+        mLblStatusDdbExists->setText(tr("DDB Missing"));
+        mLblStatusDdbExists->setStyleSheet("color: red; font-weight: 700;");
+    }
+    return ret;
+}
+
 void MainWindow::on_actionExit_triggered()
 {
     close();
@@ -224,6 +244,7 @@ void MainWindow::on_actionOpen_triggered()
     progDlg.setWindowModality(Qt::WindowModal);
     progDlg.setMinimumDuration(0);
     mLblStatusFilename->setText(fileBasename);
+    mDatabaseDirectory = filename.section('/', 0, -2);
 
     // TODO: use factory method
     ChunkCreator::Get()->SetProgressDialog(&progDlg);
@@ -232,6 +253,7 @@ void MainWindow::on_actionOpen_triggered()
 
     mTreeRoot = root;
     BuildTree(root, nullptr);
+    EnsureDdbExists();
 }
 
 
@@ -485,5 +507,276 @@ void MainWindow::on_actionExportJson_triggered()
     };
 
     outputChunkAndChildren(&stream, rootChunk);
+}
+
+
+void MainWindow::on_actionExtractAllSamples_triggered()
+{
+    if(!EnsureDdbExists()) {
+        QMessageBox::critical(this,
+                              tr("No DDB found"),
+                              tr("Cannot extract samples. Please ensure DDB is in place."));
+        return;
+    }
+
+    QFile ddbFile(mDatabaseDirectory + '/' + mLblStatusFilename->text().section('.', 0, -2) + ".ddb");
+    if(!ddbFile.open(QFile::ReadOnly)) {
+        QMessageBox::critical(this,
+                              tr("Cannot open DDB!"),
+                              tr("Can't open \"%1\" for read.").arg(ddbFile.fileName()));
+        return;
+    }
+
+    QString dir, fullSubdir;
+    QDir qd;
+
+    bool dirSelectNotOk = true, doNotCreateSubdir = false;
+    do {
+        dir = QFileDialog::getExistingDirectory(this,
+                                                tr("Choose destination (will extract to subdirectory)"),
+                                                qApp->applicationDirPath(),
+                                                QFileDialog::ShowDirsOnly
+                                                | QFileDialog::DontResolveSymlinks);
+
+        if(dir.isEmpty())
+            return;
+
+        fullSubdir = dir + "/" + mLblStatusFilename->text();
+        if(qd.exists(fullSubdir)) {
+            auto result = QMessageBox::warning(this,
+                                               tr("Destination exists"),
+                                               tr("\"%1\" already exists in the destination.\n"
+                                                  "Do you wish to choose another directory?").arg(fullSubdir),
+                                               QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+            switch(result) {
+            case QMessageBox::Yes: break;
+            case QMessageBox::No: dirSelectNotOk = false; doNotCreateSubdir = true; break;
+            default: return;
+            }
+        } else {
+            dirSelectNotOk = false;
+        }
+    } while (dirSelectNotOk);
+
+    if(!doNotCreateSubdir && !qd.mkdir(fullSubdir)) {
+        QMessageBox::critical(this,
+                              tr("Cannot create subdirectory!"),
+                              tr("Cannot create subdirectory for \"%1\".").arg(mLblStatusFilename->text()));
+        return;
+    }
+
+    // Build task list
+    struct Section {
+        int sectionLB, sectionUB,
+            stationarySectionLB, stationarySectionUB;
+    };
+
+    struct ExtractTask {
+        enum { Stationary, Articulation, Triphoneme } type;
+        uint64_t ddbOffset;
+        uint32_t extractBytes;
+        int midiPitch; // A4 = 69
+        QString voiceColor; // stationary/normal, articulation/xx/xx/default
+        QString name;
+        QVector<Section> sections;
+    };
+
+    QVector<ExtractTask> taskList;
+    QProgressDialog progDlg(QString(),
+                            QString(),
+                            0,
+                            1,
+                            this);
+    progDlg.setWindowModality(Qt::WindowModal);
+    progDlg.setMinimumDuration(0);
+    progDlg.setAutoReset(false);
+    progDlg.setMaximum(1);
+    progDlg.setValue(0);
+    progDlg.setLabelText(tr("Building extraction task list..."));
+    progDlg.show();
+
+    // Iterate stationaries
+    QVector<QString> stationaryColors;
+    auto stationaryRoot = SearchForChunkByPath({ "voice", "stationary" });
+    do {
+        if(!stationaryRoot) break;
+        // Iterate voice colors
+        foreach(auto voiceColor, stationaryRoot->Children) {
+            stationaryColors << voiceColor->GetName();
+            // Iterate stationary segments
+            foreach(auto staSeg, voiceColor->Children) {
+                // Iterate each pitch of the segment
+                foreach(auto pitchSeg, staSeg->Children) {
+                    ExtractTask task;
+                    float relativePitch = 0.0f;
+                    task.voiceColor = voiceColor->GetName();
+                    task.type = ExtractTask::Stationary;
+                    STUFF_INTO(pitchSeg->GetProperty("SND Sample offset").data, task.ddbOffset, uint64_t);
+                    STUFF_INTO(pitchSeg->GetProperty("mPitch").data, relativePitch, float);
+                    STUFF_INTO(pitchSeg->GetProperty("SND Sample count").data, task.extractBytes, uint32_t);
+                    task.extractBytes *= sizeof(uint16_t);
+                    task.midiPitch = Common::RelativePitchToMidiNote(relativePitch);
+                    task.name = staSeg->GetName();
+                    taskList << task;
+
+                    progDlg.setValue(1);
+                }
+            }
+        }
+    } while(0);
+
+    // Iterate articulations
+    QVector<QString> articulationColors;
+    auto articulationRoot = SearchForChunkByPath({ "voice", "articulation" });
+    do {
+        if(!articulationRoot) break;
+        // Iterate beginPhonemes
+        foreach(auto beginPhoneme, articulationRoot->Children) {
+            // Iterate end phonemes
+            foreach(auto endPhoneme, beginPhoneme->Children) {
+                // TODO: Triphonemes skipped
+                if(endPhoneme->ObjectSignature() == "ART ")
+                    continue;
+
+                // Iterate each pitch of the segment
+                foreach(auto pitchSeg, endPhoneme->Children) {
+                    if(!articulationColors.contains(pitchSeg->GetName()))
+                        articulationColors << pitchSeg->GetName();
+
+                    ExtractTask task;
+                    float relativePitch = 0.0f;
+                    task.voiceColor = pitchSeg->GetName();
+                    task.type = ExtractTask::Articulation;
+                    STUFF_INTO(pitchSeg->GetProperty("SND Sample offset").data, task.ddbOffset, uint64_t);
+                    STUFF_INTO(pitchSeg->GetProperty("mPitch").data, relativePitch, float);
+                    STUFF_INTO(pitchSeg->GetProperty("SND Sample count").data, task.extractBytes, uint32_t);
+                    task.extractBytes *= sizeof(uint16_t);
+                    task.midiPitch = Common::RelativePitchToMidiNote(relativePitch);
+                    task.name = beginPhoneme->GetName() + "[To]" + endPhoneme->GetName();
+
+                    // Sections
+                    auto sectionsDir = pitchSeg->GetChildByName("<sections>");
+                    do {
+                        if(!sectionsDir) break;
+
+                        foreach(auto sec, sectionsDir->Children) {
+                            Section section;
+                            STUFF_INTO(sec->GetProperty("Entire section Begin").data, section.sectionLB, uint32_t);
+                            STUFF_INTO(sec->GetProperty("Entire section End").data, section.sectionUB, uint32_t);
+                            STUFF_INTO(sec->GetProperty("Stationary section Begin").data, section.stationarySectionLB, uint32_t);
+                            STUFF_INTO(sec->GetProperty("Stationary section End").data, section.stationarySectionUB, uint32_t);
+                            task.sections << section;
+                        }
+                    } while(0);
+
+                    taskList << task;
+                    progDlg.setValue(1);
+                }
+            }
+        }
+    } while(0);
+
+    // TODO: Triphonemes
+
+    progDlg.reset();
+
+    // Start extracting
+    // We don't care about error reporting now
+    QFile csvSections(fullSubdir + '/' + "SECTIONS.CSV");
+    csvSections.open(QFile::WriteOnly);
+
+    QTextStream csvStream(&csvSections);
+    csvStream << "Type,Color,Name,Pitch,SectionBegin,SectionEnd,StationaryBegin,StationaryEnd,\n";
+
+    // Prepare sub sub directories
+    foreach(auto i, stationaryColors)
+        qd.mkdir(fullSubdir + "/stationary_" + i);
+    foreach(auto i, articulationColors)
+        qd.mkdir(fullSubdir + "/articulation_" + i);
+
+    progDlg.setMaximum(taskList.size());
+    progDlg.setValue(0);
+    progDlg.setCancelButtonText(tr("Stop"));
+    progDlg.show();
+
+    for(auto i = 0; i < taskList.size(); i++) {
+        if(progDlg.wasCanceled()) {
+            QMessageBox::information(this,
+                                     tr("Extraction cancelled"),
+                                     tr("You've cancelled extraction task.\n"
+                                        "%1/%2 tasks done.").arg(i, taskList.size()));
+            return;
+        }
+
+        static uint8_t copyBuffer[4096];
+        QString path = fullSubdir;
+        ExtractTask &task = taskList[i];
+        switch(task.type) {
+        case ExtractTask::Stationary: path += "/stationary_" + task.voiceColor; break;
+        case ExtractTask::Articulation: path += "/articulation_" + task.voiceColor; break;
+        case ExtractTask::Triphoneme: path += "/triphoneme_" + task.voiceColor; break;
+        }
+        path += '/'
+              + task.name
+              + "_@" + Common::MidiNoteToNoteName(task.midiPitch)
+              + ".wav";
+
+        QFile dstWave(path);
+        if(!dstWave.open(QFile::WriteOnly))
+            continue;
+
+        uint32_t tmp = 0;
+        uint16_t tmp2 = 0;
+        dstWave.write("RIFF", 4);
+        tmp = 44 + task.extractBytes; dstWave.write((char*)&tmp, sizeof(tmp));
+        dstWave.write("WAVE", 4);
+
+        // Assume 44100Hz 16Bit PCM 1 channel
+        dstWave.write("fmt ", 4);
+        tmp = 16; dstWave.write((char*)&tmp, sizeof(tmp)); // Subchunk1 size
+        tmp2 = 1; dstWave.write((char*)&tmp2, sizeof(tmp2)); // LPCM = 1
+        tmp2 = 1; dstWave.write((char*)&tmp2, sizeof(tmp2)); // Channel
+        tmp = 44100; dstWave.write((char*)&tmp, sizeof(tmp)); // Sample rate
+        tmp = 44100 * 1 * 16 / 8; dstWave.write((char*)&tmp, sizeof(tmp)); // Byte rate
+        tmp2 = 1 * 16 / 8; dstWave.write((char*)&tmp2, sizeof(tmp2)); // Block align
+        tmp2 = 16; dstWave.write((char*)&tmp2, sizeof(tmp2)); // Bits per sample
+
+        dstWave.write("data", 4);
+        tmp = task.extractBytes; dstWave.write((char*)&tmp, sizeof(tmp));
+
+        // Read-write loop
+        ddbFile.seek(task.ddbOffset);
+        for(auto x = task.extractBytes; x > 0; ) {
+            int readAmount = (x > sizeof(copyBuffer)) ? sizeof(copyBuffer) : x;
+            ddbFile.read((char*)copyBuffer, readAmount);
+            dstWave.write((char*)copyBuffer, readAmount);
+            x -= readAmount;
+        }
+
+        dstWave.close();
+
+        csvStream << task.type << ','
+                  << task.voiceColor << ','
+                  << QString(task.name).replace(",", "\\,") << ','
+                  << task.midiPitch << ',';
+        foreach(auto &i, task.sections) {
+            csvStream << i.sectionLB << ','
+                      << i.sectionUB << ','
+                      << i.stationarySectionLB << ','
+                      << i.stationarySectionUB << ',';
+        }
+        csvStream << '\n';
+
+        progDlg.setValue(i);
+
+        if(i % 15) {
+            progDlg.setLabelText(tr("Writing to %1...").arg(path.section('/', -1)));
+        }
+    }
+
+    progDlg.reset();
+    QMessageBox::information(this,
+                             tr("Extraction done"),
+                             tr("%1 sample extraction tasks were completed.").arg(taskList.size()));
 }
 
