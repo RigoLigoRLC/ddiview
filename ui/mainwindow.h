@@ -34,6 +34,8 @@ private slots:
 
     void on_treeStructure_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous);
 
+    void on_listProperties_customContextMenuRequested(QPoint point);
+
     void on_actionPropDist_triggered();
 
     void on_btnShowDdb_toggled(bool checked);

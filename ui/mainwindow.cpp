@@ -12,6 +12,7 @@
 #include "statisticsresultdialog.h"
 #include "articulationtabledialog.h"
 #include "ddiexportjsonoptionsdialog.h"
+#include "propertycontextmenu.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -248,6 +249,7 @@ void MainWindow::on_treeStructure_currentItemChanged(QTreeWidgetItem *current, Q
         propText += i.key() + tr(" (%1 bytes)\n").arg(i.value().data.size())
                   + FormatProperty(i.value());
         auto item = new QListWidgetItem(propText);
+        item->setData(BaseChunk::ItemPropDataRole, i.value().data);
 
         // Make those "known values" (with proper typing) a bit more eye catching
         if(i.value().type != PropRawHex)
@@ -258,6 +260,16 @@ void MainWindow::on_treeStructure_currentItemChanged(QTreeWidgetItem *current, Q
 
     mLblBlockOffset->setText(QString::number(chunk->GetOriginalOffset(), 16).toUpper());
     std::string x;
+}
+
+void MainWindow::on_listProperties_customContextMenuRequested(QPoint point)
+{
+    auto item = ui->listProperties->itemAt(point);
+    if(!item) return;
+
+    PropertyContextMenu menu(this, item);
+    auto globPoint = ui->listProperties->mapToGlobal(point);
+    menu.exec(globPoint);
 }
 
 

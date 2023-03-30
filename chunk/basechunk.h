@@ -60,7 +60,8 @@ public:
     }
 
     static bool HasLeadingQword;
-    const static int ItemChunkRole;
+    const static int ItemChunkRole,
+                     ItemPropDataRole;
 
     static QByteArray ClassSignature() { return "    "; }
     virtual QByteArray ObjectSignature() { return ClassSignature(); }

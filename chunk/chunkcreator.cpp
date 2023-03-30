@@ -29,6 +29,7 @@
 ChunkCreator *ChunkCreator::mInstance = nullptr;
 bool BaseChunk::HasLeadingQword = true;
 const int BaseChunk::ItemChunkRole = Qt::UserRole + 1;
+const int BaseChunk::ItemPropDataRole = Qt::UserRole + 2;
 
 ChunkCreator::ChunkCreator(QObject *parent)
     : QObject{parent}

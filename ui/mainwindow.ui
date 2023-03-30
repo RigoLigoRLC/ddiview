@@ -88,6 +88,9 @@
             </item>
             <item>
              <widget class="QListWidget" name="listProperties">
+              <property name="contextMenuPolicy">
+               <enum>Qt::CustomContextMenu</enum>
+              </property>
               <property name="textElideMode">
                <enum>Qt::ElideNone</enum>
               </property>
