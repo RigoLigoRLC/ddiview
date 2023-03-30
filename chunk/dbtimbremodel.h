@@ -9,7 +9,8 @@ public:
 
     }
 
-    static QByteArray DefaultSignature() { return "TMM "; }
+    static QByteArray ClassSignature() { return "TMM "; }
+    virtual QByteArray ObjectSignature() { return ClassSignature(); }
 
     virtual void Read(FILE *file) {
         ReadBlockSignature(file);

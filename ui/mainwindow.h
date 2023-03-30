@@ -42,6 +42,8 @@ private slots:
 
     void on_actionArticulationTable_triggered();
 
+    void on_actionExportJson_triggered();
+
 private:
     Ui::MainWindow *ui;
     QLabel *mLblStatusFilename, *mLblBlockOffset;

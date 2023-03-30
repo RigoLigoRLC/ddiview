@@ -9,7 +9,8 @@ public:
 
     }
 
-    static QByteArray DefaultSignature() { return "DBV "; }
+    static QByteArray ClassSignature() { return "DBV "; }
+    virtual QByteArray ObjectSignature() { return ClassSignature(); }
 
     virtual void Read(FILE *file) {
         ChunkChunkArray::Read(file);

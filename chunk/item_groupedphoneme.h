@@ -9,7 +9,8 @@ public:
 
     }
 
-    static QByteArray DefaultSignature() { return ""; }
+    static QByteArray ClassSignature() { return "____GroupedPhoneme"; }
+    virtual QByteArray ObjectSignature() { return ClassSignature(); }
 
     virtual void Read(FILE *file) {
         BaseChunk::Read(file);

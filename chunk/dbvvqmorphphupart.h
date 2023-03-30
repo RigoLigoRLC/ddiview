@@ -9,7 +9,8 @@ public:
 
     }
 
-    static QByteArray DefaultSignature() { return "VQMp"; }
+    static QByteArray ClassSignature() { return "VQMp"; }
+    virtual QByteArray ObjectSignature() { return ClassSignature(); }
 
     virtual void Read(FILE *file) {
         uint32_t dataCount, unk15;

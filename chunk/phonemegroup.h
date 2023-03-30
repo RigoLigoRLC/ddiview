@@ -11,7 +11,8 @@ public:
 
     }
 
-    static QByteArray DefaultSignature() { return "PHG2"; }
+    static QByteArray ClassSignature() { return "PHG2"; }
+    virtual QByteArray ObjectSignature() { return ClassSignature(); }
 
     virtual void Read(FILE* file) {
         ReadBlockSignature(file);

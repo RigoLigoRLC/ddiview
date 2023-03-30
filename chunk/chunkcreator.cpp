@@ -1,5 +1,6 @@
 #include "chunkcreator.h"
 
+// Chunks
 #include "chunkarray.h"
 #include "dbsinger.h"
 #include "dbvoice.h"
@@ -15,6 +16,13 @@
 #include "dbvvqmorphphupart.h"
 #include "dbtimbre.h"
 #include "dbtimbremodel.h"
+
+// Items
+#include "item_directory.h"
+#include "item_eprguides.h"
+#include "item_groupedphoneme.h"
+#include "item_phonemegroup.h"
+#include "item_phoneticunit.h"
 
 #include <QDebug>
 
@@ -44,6 +52,13 @@ ChunkCreator::ChunkCreator(QObject *parent)
     AddToFactory<ChunkDBTimbre>();
     AddToFactory<ChunkDBTimbreModel>();
 
+    AddToFactory<ItemDirectory>();
+    AddToFactory<ItemEprGuide>();
+    AddToFactory<ItemEprGuidesGroup>();
+    AddToFactory<ItemGroupedPhoneme>();
+    AddToFactory<ItemPhonemeGroup>();
+    AddToFactory<ItemPhoneticUnit>();
+
     for(auto i : FactoryMethods.keys())
         qDebug() << i << FactoryMethods[i];
 
@@ -70,5 +85,5 @@ BaseChunk *ChunkCreator::ReadFor(QByteArray signature, FILE *file)
 template<typename T>
 void ChunkCreator::AddToFactory()
 {
-    FactoryMethods[T::DefaultSignature()] = &T::Make;
+    FactoryMethods[T::ClassSignature()] = &T::Make;
 }

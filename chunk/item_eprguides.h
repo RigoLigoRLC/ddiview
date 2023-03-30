@@ -9,7 +9,8 @@ public:
 
     }
 
-    static QByteArray DefaultSignature() { return "____EprGuide"; }
+    static QByteArray ClassSignature() { return "____EprGuide"; }
+    virtual QByteArray ObjectSignature() { return ClassSignature(); }
 
     virtual void Read(FILE *file) {
         uint32_t paramCount;
@@ -37,7 +38,7 @@ public:
 
     }
 
-    static QByteArray DefaultSignature() { return "____EprGuides"; }
+    static QByteArray ClassSignature() { return "____EprGuidesGroup"; }
 
     virtual void Read(FILE *file) {
         uint32_t groupCount;

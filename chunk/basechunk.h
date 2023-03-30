@@ -62,7 +62,8 @@ public:
     static bool HasLeadingQword;
     const static int ItemChunkRole;
 
-    static QByteArray DefaultSignature() { return "    "; }
+    static QByteArray ClassSignature() { return "    "; }
+    virtual QByteArray ObjectSignature() { return ClassSignature(); }
     virtual void Read(FILE* file) { }
     virtual QString Description() { return "..."; }
     static BaseChunk* Make() { return nullptr; }

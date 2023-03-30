@@ -232,6 +232,7 @@
      <string>File</string>
     </property>
     <addaction name="actionOpen"/>
+    <addaction name="actionExportJson"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
@@ -270,6 +271,11 @@
    </property>
    <property name="toolTip">
     <string>Show the possible articulation combinations included in the database</string>
+   </property>
+  </action>
+  <action name="actionExportJson">
+   <property name="text">
+    <string>Export to JSON</string>
    </property>
   </action>
  </widget>

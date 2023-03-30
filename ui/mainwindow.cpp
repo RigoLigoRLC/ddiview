@@ -8,6 +8,7 @@
 #include "chunk/chunkcreator.h"
 #include "parser/ddi.h"
 #include "./ui_mainwindow.h"
+#include "qdebug.h"
 #include "statisticsresultdialog.h"
 #include "articulationtabledialog.h"
 
@@ -358,5 +359,81 @@ void MainWindow::on_actionArticulationTable_triggered()
     dlg.setWindowTitle("Articulation Table - " + mLblStatusFilename->text());
     dlg.SetSupportMatrix(phonemeList, supportMatrix);
     dlg.exec();
+}
+
+
+void MainWindow::on_actionExportJson_triggered()
+{
+    auto rootChunk = SearchForChunkByPath({ });
+    if(!rootChunk) return;
+
+    QFileDialog filedlg;
+    QString filename;
+
+    filename = filedlg.getSaveFileName(
+            this,
+            tr("Save JSON..."),
+            QDir::currentPath(),
+            "JSON file (*.json)");
+
+    if(filename.isEmpty())
+        return;
+
+    QFile file(filename);
+    file.open(QFile::WriteOnly);
+    if(!file.isWritable()) {
+        QMessageBox::critical(this, tr("Failed to export articulations"), tr("File is not writable"));
+        return;
+    }
+
+    QTextStream stream(&file);
+
+    auto sanitizeString = [](QString s) -> QString {
+        QString ret; QChar prev = 0;
+        for(auto i : s) {
+            if((i == '\"' || i == '\\') && (prev != '\\')) {
+                ret += '\\'; ret += i;
+            } else {
+                ret += i;
+            }
+            prev = i;
+        }
+        return ret;
+    };
+
+    std::function<void(QTextStream*,BaseChunk*)> outputChunkAndChildren = [&](QTextStream* stream, BaseChunk* chunk){
+        // Basic information
+        *stream << "{\"name\":\"" << sanitizeString(chunk->GetName()) << "\""
+                   ",\"signature\":\"" << chunk->ObjectSignature() << "\"";
+        // Properties
+        auto propMap = chunk->GetPropertiesMap();
+        if(!propMap.isEmpty()) {
+            *stream << ",\"properties\":{";
+            for(auto i = propMap.begin(); i != propMap.end(); ) {
+                *stream << '\"' << i.key()
+                       <<"\":[\"" << i.value().data.toHex() << "\","
+                       << i.value().type << "]";
+                if(++i != propMap.end())
+                    *stream << ',';
+                else
+                    *stream << '}';
+            }
+        }
+
+        // Children
+        if(!chunk->Children.isEmpty()) {
+            auto children = chunk->Children;
+            *stream << ",\"children\":[";
+            for(auto i = children.cbegin(); i != children.cend(); ) {
+                outputChunkAndChildren(stream, *i);
+                if(++i != children.cend())
+                    *stream << ',';
+            }
+            *stream << ']';
+        }
+        *stream << '}';
+    };
+
+    outputChunkAndChildren(&stream, rootChunk);
 }
 
