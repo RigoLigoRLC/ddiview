@@ -11,6 +11,7 @@
 #include "qdebug.h"
 #include "statisticsresultdialog.h"
 #include "articulationtabledialog.h"
+#include "ddiexportjsonoptionsdialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -375,7 +376,6 @@ void MainWindow::on_actionExportJson_triggered()
             tr("Save JSON..."),
             QDir::currentPath(),
             "JSON file (*.json)");
-
     if(filename.isEmpty())
         return;
 
@@ -385,8 +385,11 @@ void MainWindow::on_actionExportJson_triggered()
         QMessageBox::critical(this, tr("Failed to export articulations"), tr("File is not writable"));
         return;
     }
-
     QTextStream stream(&file);
+
+    DdiExportJsonOptionsDialog cfgDlg;
+    if(cfgDlg.exec() == QDialog::DialogCode::Rejected)
+        return;
 
     auto sanitizeString = [](QString s) -> QString {
         QString ret; QChar prev = 0;
@@ -401,36 +404,71 @@ void MainWindow::on_actionExportJson_triggered()
         return ret;
     };
 
+    int indentLevel = 0;
+    bool doCompact = cfgDlg.GetDoUseCompactJson(),
+         doVerbatimPropValue = cfgDlg.GetDoUseVerbatimPropValues();
+
+    auto outputIndent = [=](QTextStream* _stream, int level){
+        if(doCompact) return;
+        *_stream << '\n';
+        for(int i = 0; i < level; i++) *_stream << "    ";
+    };
+
     std::function<void(QTextStream*,BaseChunk*)> outputChunkAndChildren = [&](QTextStream* stream, BaseChunk* chunk){
         // Basic information
-        *stream << "{\"name\":\"" << sanitizeString(chunk->GetName()) << "\""
-                   ",\"signature\":\"" << chunk->ObjectSignature() << "\"";
+        *stream << "{";
+        indentLevel++;
+        outputIndent(stream, indentLevel);
+        *stream << "\"name\":\"" << sanitizeString(chunk->GetName()) << "\",";
+        outputIndent(stream, indentLevel);
+        *stream << "\"signature\":\"" << chunk->ObjectSignature() << "\"";
         // Properties
         auto propMap = chunk->GetPropertiesMap();
         if(!propMap.isEmpty()) {
-            *stream << ",\"properties\":{";
+            *stream << ",";
+            outputIndent(stream, indentLevel);
+            *stream << "\"properties\":{";
+            indentLevel++;
             for(auto i = propMap.begin(); i != propMap.end(); ) {
-                *stream << '\"' << i.key()
-                       <<"\":[\"" << i.value().data.toHex() << "\","
-                       << i.value().type << "]";
-                if(++i != propMap.end())
+                outputIndent(stream, indentLevel);
+                if(doVerbatimPropValue) {
+                    *stream << '\"' << i.key()
+                            << "\":[" << i.value().type << ",\""
+                            << i.value().data.toHex() << "\"]";
+                } else {
+                    *stream << '\"' << i.key()
+                            <<"\":\""
+                            << FormatProperty(i.value()) << "\"";
+                }
+                if(++i != propMap.end()) {
                     *stream << ',';
-                else
+                } else {
+                    indentLevel--;
+                    outputIndent(stream, indentLevel);
                     *stream << '}';
+                }
             }
         }
 
         // Children
         if(!chunk->Children.isEmpty()) {
             auto children = chunk->Children;
-            *stream << ",\"children\":[";
+            *stream << ",";
+            outputIndent(stream, indentLevel);
+            *stream << "\"children\":[";
+            indentLevel++;
             for(auto i = children.cbegin(); i != children.cend(); ) {
+                outputIndent(stream, indentLevel);
                 outputChunkAndChildren(stream, *i);
                 if(++i != children.cend())
                     *stream << ',';
             }
+            indentLevel--;
+            outputIndent(stream, indentLevel);
             *stream << ']';
         }
+        indentLevel--;
+        outputIndent(stream, indentLevel);
         *stream << '}';
     };
 

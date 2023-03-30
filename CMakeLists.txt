@@ -27,6 +27,9 @@ set(PROJECT_SOURCES
         ui/articulationtabledialog.h
         ui/articulationtabledialog.cpp
         ui/articulationtabledialog.h
+        ui/ddiexportjsonoptionsdialog.h
+        ui/ddiexportjsonoptionsdialog.cpp
+        ui/ddiexportjsonoptionsdialog.ui
 
         parser/ddi.cpp
         parser/ddi.h
