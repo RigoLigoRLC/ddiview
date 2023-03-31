@@ -39,7 +39,7 @@ QString Common::EscapeStringForCsv(QString str)
 {
     QString ret;
     for(auto i = str.begin(); i != str.end(); i++)
-        if(*i == ',' || *i == '"')
+        if(*i == ',' || *i == '"' || *i == '\\')
             ret += QString('\\') + *i;
         else
             ret += *i;
