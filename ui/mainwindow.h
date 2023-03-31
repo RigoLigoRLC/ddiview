@@ -60,6 +60,7 @@ private:
 
 private:
     QString mDatabaseDirectory;
+    bool mDdbLoaded, mDdbSelectionDirty;
 
 };
 #endif // MAINWINDOW_H

@@ -8,7 +8,7 @@ BaseChunk* Parse(QString path)
     FILE *file = fopen(path.toLocal8Bit(), "rb");
     if(!file) {
         QMessageBox::critical(nullptr, "error opening file", "DDI parser failed to open file");
-        return false;
+        return nullptr;
     }
 
     // Read signature first

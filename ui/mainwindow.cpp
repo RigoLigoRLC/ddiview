@@ -43,6 +43,9 @@ void MainWindow::SetupUI()
     ui->grpDdb->setHidden(true);
     ui->grpMediaTool->setHidden(true);
 
+    mDdbLoaded = false;
+    mDdbSelectionDirty = false;
+
     resize(1000, 800);
 }
 
@@ -579,6 +582,8 @@ void MainWindow::on_actionExtractAllSamples_triggered()
         QString voiceColor; // stationary/normal, articulation/xx/xx/default
         QString name;
         QVector<Section> sections;
+        QVector<QString> phonemes;
+        uint32_t totalFrames;
     };
 
     QVector<ExtractTask> taskList;
@@ -614,9 +619,11 @@ void MainWindow::on_actionExtractAllSamples_triggered()
                     STUFF_INTO(pitchSeg->GetProperty("SND Sample offset").data, task.ddbOffset, uint64_t);
                     STUFF_INTO(pitchSeg->GetProperty("mPitch").data, relativePitch, float);
                     STUFF_INTO(pitchSeg->GetProperty("SND Sample count").data, task.extractBytes, uint32_t);
+                    STUFF_INTO(pitchSeg->GetProperty("Data count").data, task.totalFrames, uint32_t);
                     task.extractBytes *= sizeof(uint16_t);
                     task.midiPitch = Common::RelativePitchToMidiNote(relativePitch);
                     task.name = staSeg->GetName();
+                    task.phonemes << task.name;
                     taskList << task;
 
                     progDlg.setValue(1);
@@ -650,9 +657,11 @@ void MainWindow::on_actionExtractAllSamples_triggered()
                     STUFF_INTO(pitchSeg->GetProperty("SND Sample offset").data, task.ddbOffset, uint64_t);
                     STUFF_INTO(pitchSeg->GetProperty("mPitch").data, relativePitch, float);
                     STUFF_INTO(pitchSeg->GetProperty("SND Sample count").data, task.extractBytes, uint32_t);
+                    STUFF_INTO(pitchSeg->GetProperty("Data count").data, task.totalFrames, uint32_t);
                     task.extractBytes *= sizeof(uint16_t);
                     task.midiPitch = Common::RelativePitchToMidiNote(relativePitch);
                     task.name = beginPhoneme->GetName() + "[To]" + endPhoneme->GetName();
+                    task.phonemes << beginPhoneme->GetName() << endPhoneme->GetName();
 
                     // Sections
                     auto sectionsDir = pitchSeg->GetChildByName("<sections>");
@@ -686,7 +695,7 @@ void MainWindow::on_actionExtractAllSamples_triggered()
     csvSections.open(QFile::WriteOnly);
 
     QTextStream csvStream(&csvSections);
-    csvStream << "Type,Color,Name,Pitch,SectionBegin,SectionEnd,StationaryBegin,StationaryEnd,\n";
+    csvStream << "Type,Filename,Color,Phonemes,Pitch,Length,SectionBegin,SectionEnd,StationaryBegin,StationaryEnd,\n";
 
     // Prepare sub sub directories
     foreach(auto i, stationaryColors)
@@ -704,7 +713,7 @@ void MainWindow::on_actionExtractAllSamples_triggered()
             QMessageBox::information(this,
                                      tr("Extraction cancelled"),
                                      tr("You've cancelled extraction task.\n"
-                                        "%1/%2 tasks done.").arg(i, taskList.size()));
+                                        "%1/%2 tasks done.").arg(i).arg(taskList.size()));
             return;
         }
 
@@ -717,10 +726,14 @@ void MainWindow::on_actionExtractAllSamples_triggered()
         case ExtractTask::Triphoneme: path += "/triphoneme_" + task.voiceColor; break;
         }
         path += '/'
-              + task.name
+              + QString("%1").arg(i, 6, 10, QChar('0'))
+              + '_'
+              + Common::SanitizeFilename(task.name)
               + "_@" + Common::MidiNoteToNoteName(task.midiPitch)
               + ".wav";
 
+// Sometimes I want only CSV to be exported so I'll disable this section and recompile
+#if 0
         QFile dstWave(path);
         if(!dstWave.open(QFile::WriteOnly))
             continue;
@@ -754,16 +767,29 @@ void MainWindow::on_actionExtractAllSamples_triggered()
         }
 
         dstWave.close();
+#endif
+
+        // Write SECTIONS.CSV
+        // We shall convert frame count to seconds
+        double wavLength = task.extractBytes / sizeof(uint16_t) / 44100.0,
+            dTotalFrames = double(task.totalFrames);
+
+        QString phonemesStr;
+        foreach(auto j, task.phonemes)
+            phonemesStr += j + ' ';
+        phonemesStr = phonemesStr.trimmed(); // trim the space at the end
 
         csvStream << task.type << ','
+                  << path.section('/', -1, -1) << ','
                   << task.voiceColor << ','
-                  << QString(task.name).replace(",", "\\,") << ','
-                  << task.midiPitch << ',';
+                  << Common::EscapeStringForCsv(phonemesStr) << ','
+                  << task.midiPitch << ','
+                  << wavLength << ',';
         foreach(auto &i, task.sections) {
-            csvStream << i.sectionLB << ','
-                      << i.sectionUB << ','
-                      << i.stationarySectionLB << ','
-                      << i.stationarySectionUB << ',';
+            csvStream << i.sectionLB / dTotalFrames * wavLength << ','
+                      << i.sectionUB / dTotalFrames * wavLength << ','
+                      << i.stationarySectionLB / dTotalFrames * wavLength << ','
+                      << i.stationarySectionUB / dTotalFrames * wavLength << ',';
         }
         csvStream << '\n';
 
