@@ -788,12 +788,12 @@ void MainWindow::on_actionExtractAllSamples_triggered()
                   << Common::EscapeStringForCsv(phonemesStr) << ','
                   << Common::EscapeStringForCsv(phonemesStr) << '_' << Common::MidiNoteToNoteName(task.midiPitch) << ','
                   << task.midiPitch << ','
-                  << wavLength << ',';
+                  << 1000.0 * wavLength << ',';
         foreach(auto &i, task.sections) {
-            csvStream << i.sectionLB / dTotalFrames * wavLength << ','
-                      << i.sectionUB / dTotalFrames * wavLength << ','
-                      << i.stationarySectionLB / dTotalFrames * wavLength << ','
-                      << i.stationarySectionUB / dTotalFrames * wavLength << ',';
+            csvStream << 1000.0 * i.sectionLB / dTotalFrames * wavLength << ','
+                      << 1000.0 * i.sectionUB / dTotalFrames * wavLength << ','
+                      << 1000.0 * i.stationarySectionLB / dTotalFrames * wavLength << ','
+                      << 1000.0 * i.stationarySectionUB / dTotalFrames * wavLength << ',';
         }
         csvStream << '\n';
 
@@ -806,8 +806,8 @@ void MainWindow::on_actionExtractAllSamples_triggered()
             oto << "0," // Begin
                 << wavLength // Consonant(NoStretch)
                 << ",0," // End
-                << task.sections[0].sectionUB / dTotalFrames * wavLength << ',' // Preutterance
-                << (task.sections[0].stationarySectionLB - task.sections[0].sectionLB)  / dTotalFrames * wavLength // Leading Overlap
+                << 1000.0 * task.sections[0].sectionUB / dTotalFrames * wavLength << ',' // Preutterance
+                << 1000.0 * (task.sections[0].stationarySectionLB - task.sections[0].sectionLB)  / dTotalFrames * wavLength // Leading Overlap
                 << '\n';
             break;
         default:
