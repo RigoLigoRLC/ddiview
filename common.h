@@ -3,6 +3,10 @@
 
 #include <QString>
 
+#ifdef Q_OS_UNIX
+#include <signal.h>
+#endif
+
 namespace Common {
     QString RelativePitchToNoteName(float pitch);
     int RelativePitchToMidiNote(float pitch);

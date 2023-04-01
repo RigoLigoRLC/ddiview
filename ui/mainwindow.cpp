@@ -693,9 +693,12 @@ void MainWindow::on_actionExtractAllSamples_triggered()
     // We don't care about error reporting now
     QFile csvSections(fullSubdir + '/' + "SECTIONS.CSV");
     csvSections.open(QFile::WriteOnly);
+    QFile otoFile(fullSubdir + '/' + "oto.ini");
+    otoFile.open(QFile::WriteOnly);
 
     QTextStream csvStream(&csvSections);
-    csvStream << "Type,Filename,Color,Phonemes,Pitch,Length,SectionBegin,SectionEnd,StationaryBegin,StationaryEnd,\n";
+    csvStream << "Type,Filename,Color,Phonemes,Alias,Pitch,Length,SectionBegin,SectionEnd,StationaryBegin,StationaryEnd,\n";
+    QTextStream oto(&otoFile);
 
     // Prepare sub sub directories
     foreach(auto i, stationaryColors)
@@ -783,6 +786,7 @@ void MainWindow::on_actionExtractAllSamples_triggered()
                   << path.section('/', -1, -1) << ','
                   << task.voiceColor << ','
                   << Common::EscapeStringForCsv(phonemesStr) << ','
+                  << Common::EscapeStringForCsv(phonemesStr) << '_' << Common::MidiNoteToNoteName(task.midiPitch) << ','
                   << task.midiPitch << ','
                   << wavLength << ',';
         foreach(auto &i, task.sections) {
@@ -792,6 +796,23 @@ void MainWindow::on_actionExtractAllSamples_triggered()
                       << i.stationarySectionUB / dTotalFrames * wavLength << ',';
         }
         csvStream << '\n';
+
+        // output oto
+        oto << path.section('/', -1, -1) << '=' << phonemesStr << '_' << Common::MidiNoteToNoteName(task.midiPitch) << ',';
+        switch(task.type) {
+        case ExtractTask::Stationary:
+            oto << "0,0,0,0,120\n"; break; // Needs verify
+        case ExtractTask::Articulation:
+            oto << "0," // Begin
+                << wavLength // Consonant(NoStretch)
+                << ",0," // End
+                << task.sections[0].sectionUB / dTotalFrames * wavLength << ',' // Preutterance
+                << (task.sections[0].stationarySectionLB - task.sections[0].sectionLB)  / dTotalFrames * wavLength // Leading Overlap
+                << '\n';
+            break;
+        default:
+            break;
+        }
 
         progDlg.setValue(i);
 
