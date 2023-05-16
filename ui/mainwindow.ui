@@ -245,6 +245,7 @@
     </property>
     <addaction name="actionPropDist"/>
     <addaction name="actionArticulationTable"/>
+    <addaction name="actionactionExportDdbLayout"/>
    </widget>
    <widget class="QMenu" name="menuExtraction">
     <property name="title">
@@ -291,6 +292,14 @@
   <action name="actionExtractAllSamples">
    <property name="text">
     <string>Extract all samples</string>
+   </property>
+  </action>
+  <action name="actionactionExportDdbLayout">
+   <property name="text">
+    <string>DDB Layout</string>
+   </property>
+   <property name="toolTip">
+    <string>Export the chunk layout in DDB (per shown by DDI).</string>
    </property>
   </action>
  </widget>

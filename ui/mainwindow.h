@@ -50,6 +50,8 @@ private slots:
 
     void on_actionExtractAllSamples_triggered();
 
+    void on_actionactionExportDdbLayout_triggered();
+
 private:
     Ui::MainWindow *ui;
     QLabel *mLblStatusFilename,

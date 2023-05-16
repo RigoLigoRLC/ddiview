@@ -827,3 +827,160 @@ void MainWindow::on_actionExtractAllSamples_triggered()
                              tr("%1 sample extraction tasks were completed.").arg(taskList.size()));
 }
 
+void MainWindow::on_actionactionExportDdbLayout_triggered()
+{
+    QMap<uint64_t, QString> layout;
+
+    setCursor(Qt::WaitCursor);
+    // Iterate stationaries
+    auto stationaryRoot = SearchForChunkByPath({ "voice", "stationary" });
+    do {
+        if(!stationaryRoot) break;
+        // Iterate voice colors
+        foreach(auto voiceColor, stationaryRoot->Children) {
+            // Iterate stationary segments
+            foreach(auto staSeg, voiceColor->Children) {
+                // Iterate each pitch of the segment
+                foreach(auto pitchSeg, staSeg->Children) {
+                    auto frameRefs = pitchSeg->GetChildByName("<Frames>");
+                    auto &props = frameRefs->GetPropertiesMap();
+                    float pitch;
+                    STUFF_INTO(pitchSeg->GetProperty("mPitch").data, pitch, float);
+                    QString pitchStr = Common::RelativePitchToNoteName(pitch);
+                    for (auto it = props.cbegin(); it != props.cend(); it++) {
+                        if (it.key() == "Count") continue;
+                        uint64_t addr;
+                        STUFF_INTO(it.value().data, addr, uint64_t);
+                        layout[addr] = QString("Stationary %1 > %2 (%3) @ %4 %5").arg(
+                                        voiceColor->GetName(),
+                                        staSeg->GetName(),
+                                        pitchSeg->GetName(),
+                                        pitchStr,
+                                        it.key()
+                                    );
+                    }
+
+                    // SND
+                    uint64_t addr;
+                    STUFF_INTO(pitchSeg->GetProperty("SND Sample offset").data, addr, uint64_t);
+                    layout[addr] = QString("Stationary %1 > %2 (%3) @ %4 Sound").arg(
+                                voiceColor->GetName(),
+                                staSeg->GetName(),
+                                pitchSeg->GetName(),
+                                pitchStr
+                            );
+                }
+            }
+        }
+    } while(0);
+
+    // Iterate articulations
+    auto articulationRoot = SearchForChunkByPath({ "voice", "articulation" });
+    do {
+        if(!articulationRoot) break;
+        // Iterate beginPhonemes
+        foreach(auto beginPhoneme, articulationRoot->Children) {
+            // Iterate end phonemes
+            foreach(auto endPhoneme, beginPhoneme->Children) {
+                // Triphonemes
+                if(endPhoneme->ObjectSignature() == "ART ") {
+                    foreach(auto thirdPhoneme, endPhoneme->Children) {
+                        foreach(auto pitchSeg, thirdPhoneme->Children) {
+                            auto frameRefs = pitchSeg->GetChildByName("<Frames>");
+                            auto &props = frameRefs->GetPropertiesMap();
+                            float pitch;
+                            STUFF_INTO(pitchSeg->GetProperty("mPitch").data, pitch, float);
+                            QString pitchStr = Common::RelativePitchToNoteName(pitch);
+                            for (auto it = props.cbegin(); it != props.cend(); it++) {
+                                if (it.key() == "Count") continue;
+                                uint64_t addr;
+                                STUFF_INTO(it.value().data, addr, uint64_t);
+                                layout[addr] = QString("Triphone Articulation %1 > %2 @ %3 %4").arg(
+                                                pitchSeg->GetName(),
+                                                QString("[%1 ~ %2 ~ %3]").arg(
+                                                    beginPhoneme->GetName(),
+                                                    endPhoneme->GetName(),
+                                                    thirdPhoneme->GetName()),
+                                                pitchStr,
+                                                it.key()
+                                            );
+                            }
+
+                            // SND
+                            uint64_t addr;
+                            STUFF_INTO(pitchSeg->GetProperty("SND Sample offset").data, addr, uint64_t);
+                            layout[addr] = QString("Triphone Articulation %1 > %2 @ %3 Sound").arg(
+                                            pitchSeg->GetName(),
+                                            QString("[%1 ~ %2 ~ %3]").arg(
+                                                beginPhoneme->GetName(),
+                                                endPhoneme->GetName(),
+                                                thirdPhoneme->GetName()),
+                                            pitchStr
+                                        );
+                        }
+                    }
+                    continue;
+                }
+
+                // Iterate each pitch of the segment
+                foreach(auto pitchSeg, endPhoneme->Children) {
+                    auto frameRefs = pitchSeg->GetChildByName("<Frames>");
+                    auto &props = frameRefs->GetPropertiesMap();
+                    float pitch;
+                    STUFF_INTO(pitchSeg->GetProperty("mPitch").data, pitch, float);
+                    QString pitchStr = Common::RelativePitchToNoteName(pitch);
+                    for (auto it = props.cbegin(); it != props.cend(); it++) {
+                        if (it.key() == "Count") continue;
+                        uint64_t addr;
+                        STUFF_INTO(it.value().data, addr, uint64_t);
+                        layout[addr] = QString("Articulation %1 > %2 @ %3 %4").arg(
+                                        pitchSeg->GetName(),
+                                        QString("[%1 ~ %2]").arg(beginPhoneme->GetName(), endPhoneme->GetName()),
+                                        pitchStr,
+                                        it.key()
+                                    );
+                    }
+
+                    // SND
+                    uint64_t addr;
+                    STUFF_INTO(pitchSeg->GetProperty("SND Sample offset").data, addr, uint64_t);
+                    layout[addr] = QString("Articulation %1 > %2 @ %3 Sound").arg(
+                                    pitchSeg->GetName(),
+                                    QString("[%1 ~ %2]").arg(beginPhoneme->GetName(), endPhoneme->GetName()),
+                                    pitchStr
+                                );
+                }
+            }
+        }
+    } while(0);
+    setCursor(Qt::ArrowCursor);
+
+    // Export as CSV
+    QFileDialog filedlg;
+    QString filename;
+
+    filename = filedlg.getSaveFileName(
+            this,
+            tr("Save CSV..."),
+            QDir::currentPath(),
+            "Comma separated values (*.csv)");
+
+    if(filename.isEmpty())
+        return;
+
+    QFile file(filename);
+    file.open(QFile::WriteOnly);
+    if(!file.isWritable()) {
+        QMessageBox::critical(this, tr("Failed to export DDB Layout"), tr("File is not writable"));
+        return;
+    }
+
+    QTextStream stream(&file);
+
+    for (auto it = layout.cbegin(); it != layout.cend(); it++) {
+        QString val = it.value();
+        stream << '\'' << QString::number(it.key(), 16) << "," << val.replace(QLatin1String(","), QLatin1String("\\,")) << ",\n";
+    }
+
+    QMessageBox::information(this, tr("Export finished"), tr("A total of %1 records exported.").arg(layout.size()));
+}

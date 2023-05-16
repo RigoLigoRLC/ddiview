@@ -2,6 +2,7 @@
 #define DBVSTATIONARYPHUPART_H
 
 #include "chunkarray.h"
+#include "item_audioframerefs.h"
 
 class ChunkDBVStationaryPhUPart : public ChunkChunkArray {
 public:
