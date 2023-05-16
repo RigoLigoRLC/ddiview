@@ -70,6 +70,7 @@ set(PROJECT_SOURCES
         chunk/item_groupedphoneme.h
         chunk/item_eprguides.h
         chunk/item_articulationsection.h
+        chunk/item_audioframerefs.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

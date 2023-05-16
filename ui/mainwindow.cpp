@@ -619,7 +619,7 @@ void MainWindow::on_actionExtractAllSamples_triggered()
                     STUFF_INTO(pitchSeg->GetProperty("SND Sample offset").data, task.ddbOffset, uint64_t);
                     STUFF_INTO(pitchSeg->GetProperty("mPitch").data, relativePitch, float);
                     STUFF_INTO(pitchSeg->GetProperty("SND Sample count").data, task.extractBytes, uint32_t);
-                    STUFF_INTO(pitchSeg->GetProperty("Data count").data, task.totalFrames, uint32_t);
+                    STUFF_INTO(pitchSeg->GetProperty("Frame count").data, task.totalFrames, uint32_t);
                     task.extractBytes *= sizeof(uint16_t);
                     task.midiPitch = Common::RelativePitchToMidiNote(relativePitch);
                     task.name = staSeg->GetName();
@@ -657,7 +657,7 @@ void MainWindow::on_actionExtractAllSamples_triggered()
                     STUFF_INTO(pitchSeg->GetProperty("SND Sample offset").data, task.ddbOffset, uint64_t);
                     STUFF_INTO(pitchSeg->GetProperty("mPitch").data, relativePitch, float);
                     STUFF_INTO(pitchSeg->GetProperty("SND Sample count").data, task.extractBytes, uint32_t);
-                    STUFF_INTO(pitchSeg->GetProperty("Data count").data, task.totalFrames, uint32_t);
+                    STUFF_INTO(pitchSeg->GetProperty("Frame count").data, task.totalFrames, uint32_t);
                     task.extractBytes *= sizeof(uint16_t);
                     task.midiPitch = Common::RelativePitchToMidiNote(relativePitch);
                     task.name = beginPhoneme->GetName() + "[To]" + endPhoneme->GetName();

@@ -25,8 +25,8 @@ public:
         CHUNK_TREADPROP("Tempo", 4, PropF32);
         ReadArrayBody(file, 0);
         CHUNK_READPROP("unk9", 4);
-        CHUNK_TREADPROP("Data count", 4, PropU32Int);
-        STUFF_INTO(GetProperty("Data count").data, dataCount, uint32_t);
+        CHUNK_TREADPROP("Frame count", 4, PropU32Int);
+        STUFF_INTO(GetProperty("Frame count").data, dataCount, uint32_t);
         CHUNK_READPROP("Data", 8 * dataCount);
         CHUNK_TREADPROP("SND Sample rate", 4, PropU32Int);
         CHUNK_TREADPROP("SND Channel count", 2, PropU16Int);

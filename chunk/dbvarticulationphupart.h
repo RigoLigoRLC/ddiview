@@ -3,6 +3,7 @@
 
 #include "chunkarray.h"
 #include "item_directory.h"
+#include "item_audioframerefs.h"
 #include "item_articulationsection.h"
 
 class ChunkDBVArticulationPhUPart : public ChunkChunkArray {
@@ -15,7 +16,7 @@ public:
     virtual QByteArray ObjectSignature() { return ClassSignature(); }
 
     virtual void Read(FILE *file) {
-        uint32_t dataCount, sectionCount;
+        uint32_t frameCount, sectionCount;
         ItemDirectory* sectionDir = nullptr;
         ReadBlockSignature(file);
         ReadArrayHead(file);
@@ -27,9 +28,16 @@ public:
         CHUNK_TREADPROP("Dynamic", 4, PropF32);
         CHUNK_TREADPROP("Tempo", 4, PropF32);
         ReadArrayBody(file, 0);
-        CHUNK_TREADPROP("Data count", 4, PropU32Int);
-        STUFF_INTO(GetProperty("Data count").data, dataCount, uint32_t);
-        CHUNK_READPROP("Data", 8 * dataCount);
+
+        CHUNK_TREADPROP("Frame count", 4, PropU32Int);
+        STUFF_INTO(GetProperty("Frame count").data, frameCount, uint32_t);
+        {
+            auto frameDir = new ItemAudioFrameRefs(frameCount);
+            frameDir->SetName("<Frames>");
+            frameDir->Read(file);
+            Children.append(frameDir);
+        }
+
         CHUNK_TREADPROP("SND Sample rate", 4, PropU32Int);
         CHUNK_TREADPROP("SND Channel count", 2, PropU16Int);
         CHUNK_TREADPROP("SND Sample count", 4, PropU32Int);
