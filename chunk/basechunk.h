@@ -60,6 +60,7 @@ public:
     }
 
     static bool HasLeadingQword;
+    static bool DevDb;
     const static int ItemChunkRole,
                      ItemPropDataRole;
 

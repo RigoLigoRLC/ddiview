@@ -22,7 +22,9 @@ public:
         HasLeadingQword = false;
 
         CHUNK_READCHILD(ChunkPhonemeDict, this);
-        CHUNK_READPROP("Hash store", 260);
+        if (!BaseChunk::DevDb) {
+            CHUNK_READPROP("Hash store", 260);
+        }
 
         HasLeadingQword = true;
 

@@ -11,6 +11,9 @@ BaseChunk* Parse(QString path)
         return nullptr;
     }
 
+    // Detect Development DB tree file
+    BaseChunk::DevDb = path.endsWith(".tree");
+
     // Read signature first
     fpos_t pos;
     char signatureBuf[4];

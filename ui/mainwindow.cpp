@@ -224,7 +224,7 @@ void MainWindow::on_actionOpen_triggered()
             this,
             tr("Open DDI..."),
             QDir::currentPath(),
-            "Daisy Database Index (*.ddi)");
+            "Daisy Database Index (*.ddi);;Development VB Index (*.tree)");
 
     if(filename.isEmpty())
         return;
