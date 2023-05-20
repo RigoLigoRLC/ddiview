@@ -17,11 +17,10 @@ int Common::RelativePitchToMidiNote(float pitch)
 QString Common::MidiNoteToNoteName(int note)
 {
     // A0 = MIDI 21, C8 = 108. Return empty when out of range
-    static const char * NoteNames[] = {
-        "A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"
-    };
-    if(note > 108 || note < 21) return QString();
-    note -= 21;
+    static const char *NoteNames[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+    if (note > 108 || note < 21)
+        return QString();
+    note -= 12;
     return QString("%1%2").arg(NoteNames[note % 12]).arg(note / 12);
 }
 
