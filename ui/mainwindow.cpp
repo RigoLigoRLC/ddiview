@@ -41,7 +41,7 @@ void MainWindow::SetupUI()
     ui->statusbar->addWidget(mLblBlockOffset);
 
     ui->grpDdb->setHidden(true);
-    ui->grpMediaTool->setHidden(true);
+    //ui->grpMediaTool->setHidden(true);
 
     mDdbLoaded = false;
     mDdbSelectionDirty = false;
@@ -352,7 +352,7 @@ void MainWindow::on_btnShowDdb_toggled(bool checked)
 
 void MainWindow::on_btnShowMediaTool_toggled(bool checked)
 {
-    ui->grpMediaTool->setVisible(checked);
+    //ui->grpMediaTool->setVisible(checked);
 }
 
 
@@ -809,7 +809,8 @@ void MainWindow::on_actionExtractAllSamples_triggered()
             oto << "0,0,0,0,120\n"; break; // Needs verify
         case ExtractTask::Articulation:
             oto << "0," // Begin
-                << wavLength // Consonant(NoStretch)
+//                << 1000.0 * wavLength // Consonant(NoStretch)
+                << "0," // Let it be completely stretchable for now...
                 << ",0," // End
                 << 1000.0 * task.sections[0].sectionUB / dTotalFrames * wavLength << ',' // Preutterance
                 << 1000.0 * (task.sections[0].stationarySectionLB - task.sections[0].sectionLB)  / dTotalFrames * wavLength // Leading Overlap
@@ -821,7 +822,7 @@ void MainWindow::on_actionExtractAllSamples_triggered()
 
         progDlg.setValue(i);
 
-        if(i % 15) {
+        if(i % 15 == 0) {
             progDlg.setLabelText(tr("Writing to %1...").arg(path.section('/', -1)));
         }
     }
@@ -989,3 +990,4 @@ void MainWindow::on_actionactionExportDdbLayout_triggered()
 
     QMessageBox::information(this, tr("Export finished"), tr("A total of %1 records exported.").arg(layout.size()));
 }
+

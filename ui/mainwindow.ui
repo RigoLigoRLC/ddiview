@@ -193,24 +193,6 @@
               </property>
              </widget>
             </item>
-            <item>
-             <widget class="QGroupBox" name="grpMediaTool">
-              <property name="title">
-               <string>Media Tool</string>
-              </property>
-              <layout class="QVBoxLayout" name="verticalLayout_4">
-               <item>
-                <widget class="QStackedWidget" name="stackedWidget">
-                 <property name="currentIndex">
-                  <number>0</number>
-                 </property>
-                 <widget class="QWidget" name="synthesis"/>
-                 <widget class="QWidget" name="playback"/>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
            </layout>
           </widget>
          </widget>
