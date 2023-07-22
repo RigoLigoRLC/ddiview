@@ -195,16 +195,19 @@ void MainWindow::PatternedRecursionOnProperties(QString pattern, std::function<v
 bool MainWindow::EnsureDdbExists()
 {
     bool ret;
-    ret = QFile::exists(mDatabaseDirectory + '/' + mLblStatusFilename->text().section('.', 0, -2) + ".ddb");
+    auto ddbPath = mDatabaseDirectory + '/' + mLblStatusFilename->text().section('.', 0, -2) + ".ddb";
+    ret = QFile::exists(ddbPath);
     auto font = mLblStatusDdbExists->font();
     if(ret) {
         font.setBold(false);
         mLblStatusDdbExists->setText(tr("DDB Exists"));
         mLblStatusDdbExists->setStyleSheet("color: green; font-weight: 500;");
+        mDdbPath = ddbPath;
     } else {
         font.setBold(true);
         mLblStatusDdbExists->setText(tr("DDB Missing"));
         mLblStatusDdbExists->setStyleSheet("color: red; font-weight: 700;");
+        mDdbPath.clear();
     }
     return ret;
 }
@@ -237,6 +240,7 @@ void MainWindow::on_actionOpen_triggered()
     ui->treeStructure->clear();
     connect(ui->treeStructure, &QTreeWidget::currentItemChanged, this, &MainWindow::on_treeStructure_currentItemChanged);
 
+    mDdiPath = filename;
     QString fileBasename = filename.section('/', -1);
     QFile fileForSize(filename);
     QProgressDialog progDlg(QString("Reading %1...").arg(fileBasename),

@@ -62,6 +62,7 @@ private:
 
 private:
     QString mDatabaseDirectory;
+    QString mDdiPath, mDdbPath;
     bool mDdbLoaded, mDdbSelectionDirty;
 
 };
