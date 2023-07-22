@@ -33,6 +33,9 @@ set(PROJECT_SOURCES
         ui/ddiexportjsonoptionsdialog.h
         ui/ddiexportjsonoptionsdialog.cpp
         ui/ddiexportjsonoptionsdialog.ui
+        ui/mediatoolwindow.h
+        ui/mediatoolwindow.cpp
+        ui/mediatoolwindow.ui
 
         ui/propertycontextmenu.h
         ui/propertycontextmenu.cpp
