@@ -255,11 +255,12 @@ void MainWindow::on_actionOpen_triggered()
 
     // TODO: use factory method
     ChunkCreator::Get()->SetProgressDialog(&progDlg);
-    auto root = Parse(filename);
+    auto root = ParseDdi(filename);
     ChunkCreator::Get()->SetProgressDialog(nullptr);
 
     mTreeRoot = root;
     BuildTree(root, nullptr);
+
     EnsureDdbExists();
 }
 

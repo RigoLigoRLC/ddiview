@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <QMessageBox>
 
-BaseChunk* Parse(QString path)
+BaseChunk* ParseDdi(QString path)
 {
     FILE *file = fopen(path.toLocal8Bit(), "rb");
     if(!file) {

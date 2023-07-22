@@ -4,6 +4,6 @@
 #include <QTreeWidget>
 #include "chunk/basechunk.h"
 
-BaseChunk* Parse(QString path);
+BaseChunk* ParseDdi(QString path);
 
 #endif // DDI_H
