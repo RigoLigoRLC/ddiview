@@ -10,15 +10,17 @@
 #define CHUNK_READPROP(name,size)            \
     do {                                     \
         QByteArray tmp(size, 0);          \
+        size_t offset = ftell(file); \
         fread(tmp.data(), 1, size, file);      \
-        mAdditionalProperties[name] = tmp;   \
+        mAdditionalProperties[name] = ChunkProperty {tmp, PropRawHex, offset};   \
     } while (0)
 
 #define CHUNK_TREADPROP(name,size,type)            \
     do {                                     \
         QByteArray tmp(size, 0);          \
+        size_t offset = ftell(file); \
         fread(tmp.data(), 1, size, file);      \
-        mAdditionalProperties[name] = ChunkProperty {tmp, type};   \
+        mAdditionalProperties[name] = ChunkProperty {tmp, type, offset};   \
     } while (0)
 
 #define STUFF_INTO(from,to,type) \
@@ -34,6 +36,7 @@
 struct ChunkProperty {
     QByteArray data;
     PropertyType type;
+    size_t offset;
 
     operator QByteArray() { return data; } // Implicit conversion to QByteArray
     ChunkProperty operator=(QByteArray _data) { data = _data; return *this; }
@@ -59,10 +62,12 @@ public:
         }
     }
 
+    static bool ArrayLeadingChunkName;
     static bool HasLeadingQword;
     static bool DevDb;
     const static int ItemChunkRole,
-                     ItemPropDataRole;
+                     ItemPropDataRole,
+                     ItemOffsetRole;
 
     static QByteArray ClassSignature() { return "    "; }
     virtual QByteArray ObjectSignature() { return ClassSignature(); }

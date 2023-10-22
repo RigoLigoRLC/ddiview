@@ -46,6 +46,10 @@ protected:
 
         //FIXME: JUST FOR TEST
         for(uint32_t ii = 0; ii < (maxCount == 0 ? count : maxCount); ii++) {
+
+            if (BaseChunk::ArrayLeadingChunkName)
+                ReadStringName(file); // HACK: Use current array's name as a temporary variable
+
             // Read signature first
             fpos_t pos;
             fgetpos(file, &pos);
@@ -56,9 +60,11 @@ protected:
 
             auto sig = QByteArray(signatureBuf, 4);
             auto chk = ChunkCreator::Get()->ReadFor(sig, file);
-            if(chk)
+            if(chk) {
+                if (BaseChunk::ArrayLeadingChunkName)
+                    chk->SetName(GetName());
                 Children.append(chk);
-            else
+            } else
                 break;
         }
     }

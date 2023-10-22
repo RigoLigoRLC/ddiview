@@ -17,7 +17,7 @@ ArticulationTableDialog::~ArticulationTableDialog()
     delete ui;
 }
 
-void ArticulationTableDialog::SetSupportMatrix(QStringList phonemeList, const QVector<int> &supportMatrix)
+void ArticulationTableDialog::SetDiphonemeMatrix(QStringList phonemeList, const QVector<int> &supportMatrix)
 {
     auto size = phonemeList.size();
 

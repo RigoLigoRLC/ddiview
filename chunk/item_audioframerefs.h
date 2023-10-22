@@ -16,6 +16,7 @@ public:
     virtual QByteArray ObjectSignature() { return ClassSignature(); }
 
     virtual void Read(FILE *file) {
+        ReadOriginalOffset(file);
         for (uint32_t i = 0; i < m_count; i++) {
             CHUNK_TREADPROP(QString("Frame %1").arg(i, 5, 10, QChar('0')), 8, PropHex64);
         }

@@ -11,8 +11,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets PrintSupport)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets PrintSupport)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -29,7 +29,7 @@ set(PROJECT_SOURCES
         ui/statisticsresultdialog.ui
         ui/articulationtabledialog.h
         ui/articulationtabledialog.cpp
-        ui/articulationtabledialog.h
+        ui/articulationtabledialog.ui
         ui/ddiexportjsonoptionsdialog.h
         ui/ddiexportjsonoptionsdialog.cpp
         ui/ddiexportjsonoptionsdialog.ui
@@ -42,6 +42,9 @@ set(PROJECT_SOURCES
 
         parser/ddi.cpp
         parser/ddi.h
+
+        util/util.h
+        util/util.cpp
 
         chunk/propertytype.h
         chunk/propertytype.cpp
@@ -76,6 +79,11 @@ set(PROJECT_SOURCES
         chunk/item_audioframerefs.h
 )
 
+# QCustomPlot
+add_library(qcustomplot STATIC thirdparty/qcustomplot/qcustomplot.cpp)
+target_include_directories(qcustomplot PUBLIC thirdparty/qcustomplot)
+target_link_libraries(qcustomplot Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::PrintSupport)
+
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(ddiview
         MANUAL_FINALIZATION
@@ -99,7 +107,7 @@ else()
     endif()
 endif()
 
-target_link_libraries(ddiview PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+target_link_libraries(ddiview PRIVATE Qt${QT_VERSION_MAJOR}::Widgets qcustomplot)
 
 set_target_properties(ddiview PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com

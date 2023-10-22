@@ -13,6 +13,7 @@ public:
     virtual QByteArray ObjectSignature() { return ClassSignature(); }
 
     virtual void Read(FILE *file) {
+        ReadOriginalOffset(file);
         CHUNK_TREADPROP("Entire section Begin", 4, PropU32Int);
         CHUNK_TREADPROP("Entire section End", 4, PropU32Int);
         CHUNK_TREADPROP("Stationary section Begin", 4, PropU32Int);

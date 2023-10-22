@@ -13,6 +13,7 @@ public:
     virtual QByteArray ObjectSignature() { return ClassSignature(); }
 
     virtual void Read(FILE *file) {
+        ReadOriginalOffset(file);
         BaseChunk::Read(file);
     }
 

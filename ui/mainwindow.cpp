@@ -1,11 +1,18 @@
+
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <QFileDialog>
 #include <QProgressDialog>
 #include <QFile>
 #include <QInputDialog>
 #include <QTableWidget>
 #include <QMessageBox>
+#include "chunk/chunkreaderguards.h"
 #include "mainwindow.h"
 #include "chunk/chunkcreator.h"
+#include "chunk/dbvstationaryphupart_devdb.h"
+#include "chunk/dbvarticulationphu_devdb.h"
+#include "chunk/dbvarticulationphupart_devdb.h"
 #include "parser/ddi.h"
 #include "./ui_mainwindow.h"
 #include "qdebug.h"
@@ -14,6 +21,7 @@
 #include "ddiexportjsonoptionsdialog.h"
 #include "propertycontextmenu.h"
 #include "common.h"
+#include "util/util.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -36,9 +44,11 @@ void MainWindow::SetupUI()
     mLblStatusFilename = new QLabel();
     mLblStatusDdbExists = new QLabel();
     mLblBlockOffset = new QLabel();
+    mLblPropertyOffset = new QLabel();
     ui->statusbar->addWidget(mLblStatusFilename);
     ui->statusbar->addWidget(mLblStatusDdbExists, 999);
     ui->statusbar->addWidget(mLblBlockOffset);
+    ui->statusbar->addWidget(mLblPropertyOffset);
 
     ui->grpDdb->setHidden(true);
     //ui->grpMediaTool->setHidden(true);
@@ -280,6 +290,7 @@ void MainWindow::on_treeStructure_currentItemChanged(QTreeWidgetItem *current, Q
                   + FormatProperty(i.value());
         auto item = new QListWidgetItem(propText);
         item->setData(BaseChunk::ItemPropDataRole, i.value().data);
+        item->setData(BaseChunk::ItemOffsetRole, i.value().offset);
 
         // Make those "known values" (with proper typing) a bit more eye catching
         if(i.value().type != PropRawHex)
@@ -288,7 +299,7 @@ void MainWindow::on_treeStructure_currentItemChanged(QTreeWidgetItem *current, Q
 
     }
 
-    mLblBlockOffset->setText(QString::number(chunk->GetOriginalOffset(), 16).toUpper());
+    mLblBlockOffset->setText("NODE " + QString::number(chunk->GetOriginalOffset(), 16).toUpper());
     std::string x;
 }
 
@@ -387,9 +398,12 @@ void MainWindow::on_actionArticulationTable_triggered()
         }
         foreach(const auto &j, i->Children) {
             if(j->GetSignature() == "ART ") {
-                // TODO: Triphoneme
                 continue;
+                foreach(auto thirdPhoneme, j->Children) {
+                    // TODO: Triphoneme
+                }
             }
+
             auto data = j->GetProperty("Count").data;
             int count;
             STUFF_INTO(data, count, 4);
@@ -400,7 +414,7 @@ void MainWindow::on_actionArticulationTable_triggered()
 
     ArticulationTableDialog dlg;
     dlg.setWindowTitle("Articulation Table - " + mLblStatusFilename->text());
-    dlg.SetSupportMatrix(phonemeList, supportMatrix);
+    dlg.SetDiphonemeMatrix(phonemeList, supportMatrix);
     dlg.exec();
 }
 
@@ -647,8 +661,14 @@ void MainWindow::on_actionExtractAllSamples_triggered()
             // Iterate end phonemes
             foreach(auto endPhoneme, beginPhoneme->Children) {
                 // TODO: Triphonemes skipped
-                if(endPhoneme->ObjectSignature() == "ART ")
+                if(endPhoneme->ObjectSignature() == "ART ") {
                     continue;
+                    foreach(auto thirdPhoneme, endPhoneme->Children) {
+                        foreach(auto pitchSeg, thirdPhoneme->Children) {
+
+                        }
+                    }
+                }
 
                 // Iterate each pitch of the segment
                 foreach(auto pitchSeg, endPhoneme->Children) {
@@ -989,5 +1009,187 @@ void MainWindow::on_actionactionExportDdbLayout_triggered()
     }
 
     QMessageBox::information(this, tr("Export finished"), tr("A total of %1 records exported.").arg(layout.size()));
+}
+
+
+void MainWindow::on_actionPack_DevDB_triggered()
+{
+    if (!mDdiPath.endsWith(".tree")) {
+        QMessageBox::critical(this, "Cannot pack DB", "Pack DB is only intended for development DBs");
+        return;
+    }
+
+    // Sanity check the filesystem structure
+    const QString devDbFsRoot = mDdiPath.section('.', 0, -2) + '/';
+    QProgressDialog progDlg(QString(),
+                            QString(),
+                            0,
+                            1,
+                            this);
+    progDlg.setWindowModality(Qt::WindowModal);
+    progDlg.setMinimumDuration(0);
+    progDlg.setAutoReset(false);
+    progDlg.setMaximum(INT_MAX);
+    progDlg.setValue(0);
+    progDlg.setWindowTitle(tr("Sanity check on filesystem"));
+    progDlg.show();
+
+    {
+        LeadingQwordGuard qwg(false);
+        int idx = 0;
+        // Stationaries
+        auto stationaryRoot = SearchForChunkByPath({ "voice", "stationary" });
+
+        // Iterate voice colors
+        foreach(auto voiceColor, stationaryRoot->Children) {
+            // Iterate stationary segments
+            foreach(auto staSeg, voiceColor->Children) {
+                // Iterate each pitch of the segment
+                foreach(auto pitchSeg, staSeg->Children) {
+                    QString targetFile = devDbFsRoot
+                                         + QString("voice/stationary/%1/%2/%3")
+                                               .arg(voiceColor->GetName(),
+                                                    devDbDirEncode(staSeg->GetName()),
+                                                    devDbDirEncode(pitchSeg->GetName()));
+                    progDlg.setLabelText(targetFile);
+                    progDlg.setValue(idx++);
+
+                    if (!QFile::exists(targetFile)) {
+                        QMessageBox::critical(this, "Stationary check fail", "Cannot find " + targetFile);
+                        return;
+                    }
+
+                    FILE* f = fopen(targetFile.toLatin1(), "rb");
+                    if (!f) {
+                        QMessageBox::warning(this, "Cannot open " + targetFile, QString("Error %1").arg(errno));
+                        continue;
+                    }
+                    auto STAp = new ChunkDBVStationaryPhUPart_DevDB;
+                    STAp->Read(f);
+                    fclose(f);
+                    if (STAp->GetProperty("Frame count").data != pitchSeg->GetProperty("Frame count").data) {
+                        QMessageBox::critical(this, "Stationary check fail", staSeg->GetName() + " frame count mismatch");
+                        delete STAp;
+                        return;
+                    }
+                    delete STAp;
+                }
+            }
+        }
+
+        // Articulation
+        auto articulationRoot = SearchForChunkByPath({ "voice", "articulation" });        // Iterate beginPhonemes
+        foreach(auto beginPhoneme, articulationRoot->Children) {
+            // Iterate end phonemes
+            foreach(auto endPhoneme, beginPhoneme->Children) {
+                // Triphonemes
+                if(endPhoneme->ObjectSignature() == "ART ") {
+                    foreach(auto thirdPhoneme, endPhoneme->Children) {
+                        QString targetFile = devDbFsRoot
+                                             + QString("voice/articulation/%1/%2/%3")
+                                                   .arg(devDbDirEncode(beginPhoneme->GetName()),
+                                                        devDbDirEncode(endPhoneme->GetName()),
+                                                        devDbDirEncode(thirdPhoneme->GetName()));
+                        progDlg.setLabelText(targetFile);
+
+                        if (!QFile::exists(targetFile) && !QFile::exists(targetFile += ".part")) {
+                            QMessageBox::critical(this, "Articulation triphoneme check fail", "Cannot find " + targetFile);
+                            return;
+                        }
+
+                        FILE* f = fopen(targetFile.toLatin1(), "rb");
+                        if (!f) {
+                            QMessageBox::warning(this, "Cannot open " + targetFile, QString("Error %1").arg(errno));
+                            continue;
+                        }
+                        auto ARTu = new ChunkDBVArticulationPhU_DevDB;
+                        ARTu->Read(f);
+                        fclose(f);
+
+                        for(auto pitch = 0; pitch < thirdPhoneme->Children.size(); pitch++) {
+                            auto pitchSeg = thirdPhoneme->Children[pitch];
+
+                            if (ARTu->Children[pitch]->GetProperty("Frame count").data != pitchSeg->GetProperty("Frame count").data) {
+                                QMessageBox::critical(this,
+                                                      "Articulation triphoneme check fail",
+                                                      QString("%1-%2-%3 %4 frame count mismatch")
+                                                          .arg(beginPhoneme->GetName(),
+                                                               endPhoneme->GetName(),
+                                                               thirdPhoneme->GetName(),
+                                                               QString::number(pitch)));
+                                delete ARTu;
+                                return;
+                            }
+                        }
+
+                        delete ARTu;
+                    }
+                    continue;
+                }
+
+                QString targetFile = devDbFsRoot
+                                     + QString("voice/articulation/%1/%2")
+                                           .arg(devDbDirEncode(beginPhoneme->GetName()),
+                                                devDbDirEncode(endPhoneme->GetName()));
+                progDlg.setLabelText(targetFile);
+
+                if (!QFile::exists(targetFile) && !QFile::exists(targetFile += ".part")) {
+                    QMessageBox::critical(this, "Articulation check fail", "Cannot find " + targetFile);
+                    return;
+                }
+
+                FILE* f = fopen(targetFile.toLatin1(), "rb");
+                if (!f) {
+                    QMessageBox::warning(this, "Cannot open " + targetFile, QString("Error %1").arg(errno));
+                    continue;
+                }
+                auto ARTu = new ChunkDBVArticulationPhU_DevDB;
+                ARTu->Read(f);
+                fclose(f);
+
+                // Iterate each pitch of the segment
+                if (ARTu->Children.count() != endPhoneme->Children.count()) {
+                    QMessageBox::critical(this,
+                                          "Articulation check fail",
+                                          QString("%1-%2 inconsistent sample count (Tree %3 Item %4)")
+                                              .arg(beginPhoneme->GetName(),
+                                                   endPhoneme->GetName())
+                                              .arg(endPhoneme->Children.count())
+                                              .arg(ARTu->Children.count())
+                                          );
+                    delete ARTu;
+                    return;
+                }
+
+                for(auto pitch = 0; pitch < endPhoneme->Children.size(); pitch++) {
+                    auto pitchSeg = endPhoneme->Children[pitch];
+
+                    if (ARTu->Children[pitch]->GetProperty("Frame count").data != pitchSeg->GetProperty("Frame count").data) {
+                        QMessageBox::critical(this,
+                                              "Articulation check fail",
+                                              QString("%1-%2 %3 frame count mismatch")
+                                                  .arg(beginPhoneme->GetName(),
+                                                       endPhoneme->GetName(),
+                                                       QString::number(pitch)));
+                        delete ARTu;
+                        return;
+                    }
+                }
+
+                delete ARTu;
+            }
+        }
+
+        QMessageBox::information(this, "Consistency check pass", "All required files exists and DB index tree is consistent.");
+    }
+}
+
+
+void MainWindow::on_listProperties_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
+{
+    mLblPropertyOffset->setText("PROP " + QString::number(current ?
+                                              current->data(BaseChunk::ItemOffsetRole).toULongLong() :
+                                                          0
+                                                          , 16).toUpper());
 }
 

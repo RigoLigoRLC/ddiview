@@ -15,7 +15,7 @@ public:
     explicit ArticulationTableDialog(QWidget *parent = nullptr);
     ~ArticulationTableDialog();
 
-    void SetSupportMatrix(QStringList phonemeList, const QVector<int>&);
+    void SetDiphonemeMatrix(QStringList phonemeList, const QVector<int>&);
 
 private slots:
     void on_btnExportCsv_clicked();

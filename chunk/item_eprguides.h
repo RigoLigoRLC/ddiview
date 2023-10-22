@@ -14,6 +14,7 @@ public:
 
     virtual void Read(FILE *file) {
         uint32_t paramCount;
+
         BaseChunk::Read(file);
         CHUNK_READPROP("Name", 32);
         CHUNK_READPROP("Parameter count", 4);
@@ -42,6 +43,8 @@ public:
 
     virtual void Read(FILE *file) {
         uint32_t groupCount;
+
+        BaseChunk::Read(file);
         CHUNK_READPROP("Count", 4);
         STUFF_INTO(GetProperty("Count").data, groupCount, uint32_t);
         for(uint32_t i = 0; i < groupCount; i++) {

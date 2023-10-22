@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QListWidgetItem>
 #include <QTreeWidgetItem>
 #include <QLabel>
 #include "chunk/basechunk.h"
@@ -52,11 +53,16 @@ private slots:
 
     void on_actionactionExportDdbLayout_triggered();
 
+    void on_actionPack_DevDB_triggered();
+
+    void on_listProperties_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
+
 private:
     Ui::MainWindow *ui;
     QLabel *mLblStatusFilename,
            *mLblStatusDdbExists,
-           *mLblBlockOffset;
+           *mLblBlockOffset,
+           *mLblPropertyOffset;
 
     BaseChunk* mTreeRoot;
 

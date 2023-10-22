@@ -17,6 +17,11 @@
 #include "dbtimbre.h"
 #include "dbtimbremodel.h"
 
+#include "smsgenerictrack.h"
+#include "smsregion.h"
+#include "smsframe.h"
+#include "soundchunk.h"
+
 // Items
 #include "item_directory.h"
 #include "item_eprguides.h"
@@ -29,8 +34,10 @@
 ChunkCreator *ChunkCreator::mInstance = nullptr;
 bool BaseChunk::HasLeadingQword = true;
 bool BaseChunk::DevDb = false;
+bool BaseChunk::ArrayLeadingChunkName = false;
 const int BaseChunk::ItemChunkRole = Qt::UserRole + 1;
 const int BaseChunk::ItemPropDataRole = Qt::UserRole + 2;
+const int BaseChunk::ItemOffsetRole = Qt::UserRole + 2;
 
 ChunkCreator::ChunkCreator(QObject *parent)
     : QObject{parent}
@@ -53,6 +60,11 @@ ChunkCreator::ChunkCreator(QObject *parent)
     AddToFactory<ChunkDBVVQMorphPhUPart>();
     AddToFactory<ChunkDBTimbre>();
     AddToFactory<ChunkDBTimbreModel>();
+
+    AddToFactory<ChunkSMSGenericTrackChunk>();
+    AddToFactory<ChunkSMSRegionChunk>();
+    AddToFactory<ChunkSMSFrameChunk>();
+    AddToFactory<ChunkSoundChunk>();
 
     AddToFactory<ItemDirectory>();
     AddToFactory<ItemEprGuide>();

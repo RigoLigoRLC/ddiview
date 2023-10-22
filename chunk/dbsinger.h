@@ -3,6 +3,7 @@
 
 #include "chunkarray.h"
 #include "phonemedict.h"
+#include "chunkreaderguards.h"
 
 class ChunkDBSinger : public ChunkChunkArray {
 public:
@@ -18,15 +19,15 @@ public:
         ReadArrayHead(file);
         CHUNK_READPROP("unk6", 4);
 
-        // Emulate Vocaloid behavior
-        HasLeadingQword = false;
+        {
+            // Emulate Vocaloid behavior
+            LeadingQwordGuard qwg(false);
 
-        CHUNK_READCHILD(ChunkPhonemeDict, this);
-        if (!BaseChunk::DevDb) {
-            CHUNK_READPROP("Hash store", 260);
+            CHUNK_READCHILD(ChunkPhonemeDict, this);
+            if (!BaseChunk::DevDb) {
+                CHUNK_READPROP("Hash store", 260);
+            }
         }
-
-        HasLeadingQword = true;
 
         ReadArrayBody(file, 0);
 

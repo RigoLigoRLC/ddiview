@@ -209,7 +209,7 @@
      <x>0</x>
      <y>0</y>
      <width>1051</width>
-     <height>17</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuOpen">
@@ -235,9 +235,16 @@
     </property>
     <addaction name="actionExtractAllSamples"/>
    </widget>
+   <widget class="QMenu" name="menuSpecial">
+    <property name="title">
+     <string>Special</string>
+    </property>
+    <addaction name="actionPack_DevDB"/>
+   </widget>
    <addaction name="menuOpen"/>
    <addaction name="menuStatistics"/>
    <addaction name="menuExtraction"/>
+   <addaction name="menuSpecial"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionOpen">
@@ -282,6 +289,11 @@
    </property>
    <property name="toolTip">
     <string>Export the chunk layout in DDB (per shown by DDI).</string>
+   </property>
+  </action>
+  <action name="actionPack_DevDB">
+   <property name="text">
+    <string>Pack DevDB</string>
    </property>
   </action>
  </widget>
