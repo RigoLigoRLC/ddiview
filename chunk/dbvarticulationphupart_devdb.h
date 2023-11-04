@@ -17,6 +17,8 @@ public:
 
     virtual void Read(FILE *file) {
         uint32_t frameCount = 0;
+        allFramesCount = 0;
+        skipFrameCount = SIZE_MAX;
 //        ItemDirectory* sectionDir = nullptr;
         ReadBlockSignature(file);
         ReadArrayHead(file);
@@ -35,15 +37,26 @@ public:
 
         // Calculate frame count on the fly
         ChunkSMSGenericTrackChunk* epr;
+        size_t tempSkipFrameCount = SIZE_MAX;
         if ((epr = decltype(epr)(GetChildByName("EpR")))) {
             for (auto i : epr->Children) {
                 auto rgn = (ChunkSMSRegionChunk*)i;
                 if (rgn->GetPropertiesMap().contains("Stable region begin")) {
                     frameCount += rgn->Children.size();
+                    framesToWrite.append(rgn->Children);
+                    if (skipFrameCount == SIZE_MAX) {
+                        // Do it only once
+                        skipFrameCount = tempSkipFrameCount;
+                    }
+                } else if (skipFrameCount == SIZE_MAX) {
+                    // Accumulate before met first non skipped region
+                    tempSkipFrameCount += rgn->Children.size();
                 }
+                allFramesCount += rgn->Children.size();
             }
         }
         mAdditionalProperties["Frame count"] = {QByteArray((const char*)&frameCount, 4), PropU32Int, SIZE_MAX};
+        this->frameCount = frameCount;
 
 
 //        CHUNK_TREADPROP("Frame count", 4, PropU32Int);
@@ -76,11 +89,21 @@ public:
 //        ReadStringName(file);
     }
 
+    bool IsStartingWithVowel() {
+        // Only vowels are considered stretchable
+        // so if stable mark of section 0 is present it must be starting with a vowel
+        auto rgn = GetChildByName("EpR")->Children[1]; // region 0 is leading cutoff
+        return rgn->GetProperty("Stable region begin").data != QByteArray(4, '\0');
+    }
+
     virtual QString Description() {
         return "DBVArticulationPhUPart";
     }
 
     static BaseChunk* Make() { return new ChunkDBVArticulationPhUPart_DevDB; }
+
+    size_t frameCount, allFramesCount, skipFrameCount;
+    QVector<BaseChunk*> framesToWrite;
 };
 
 #endif // DBVARTICULATIONPHUPART_DEVDB_H

@@ -17,6 +17,8 @@ public:
 
     virtual void Read(FILE *file) {
         uint32_t frameCount = 0;
+        skipFrameCount = SIZE_MAX;
+        allFramesCount = 0;
         ReadBlockSignature(file);
         ReadArrayHead(file);
         CHUNK_TREADPROP("unk1", 8, PropHex64);
@@ -34,15 +36,26 @@ public:
 
         // Calculate frame count on the fly
         ChunkSMSGenericTrackChunk* epr;
+        size_t tempSkipFrameCount = SIZE_MAX;
         if ((epr = decltype(epr)(GetChildByName("EpR")))) {
             for (auto i : epr->Children) {
                 auto rgn = (ChunkSMSRegionChunk*)i;
                 if (rgn->GetPropertiesMap().contains("Stable region begin")) {
                     frameCount += rgn->Children.size();
+                    framesToWrite.append(rgn->Children);
+                    if (skipFrameCount == SIZE_MAX) {
+                        // Do it only once
+                        skipFrameCount = tempSkipFrameCount;
+                    }
+                } else if (skipFrameCount == SIZE_MAX) {
+                    // Accumulate before met first non skipped region
+                    tempSkipFrameCount += rgn->Children.size();
                 }
+                allFramesCount += rgn->Children.size();
             }
         }
         mAdditionalProperties["Frame count"] = {QByteArray((const char*)&frameCount, 4), PropU32Int, SIZE_MAX};
+        this->frameCount = frameCount;
 
 //        CHUNK_READPROP("unk9", 4);
 
@@ -71,6 +84,9 @@ public:
     }
 
     static BaseChunk* Make() { return new ChunkDBVStationaryPhUPart_DevDB; }
+
+    size_t frameCount, allFramesCount, skipFrameCount;
+    QVector<BaseChunk*> framesToWrite;
 };
 
 #endif // DBVSTATIONARYPHUPART_DEVDB_H

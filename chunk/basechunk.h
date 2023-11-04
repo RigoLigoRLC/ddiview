@@ -80,6 +80,7 @@ public:
     ChunkProperty GetProperty(QString name) { return mAdditionalProperties.value(name, ChunkProperty()); }
     void SetProperty(QString name, ChunkProperty data) { mAdditionalProperties[name] = data; }
     uint64_t GetOriginalOffset() { return mOriginalOffset; }
+    uint32_t GetSize() { return mSize; }
     const QMap<QString, ChunkProperty>& GetPropertiesMap() { return mAdditionalProperties; }
     QByteArray GetSignature() { return mSignature; }
     BaseChunk* GetChildByName(QString name) {
@@ -102,7 +103,8 @@ protected:
             CHUNK_READPROP("LeadingQword", 8);
         QByteArray tmp(4, 0);
         fread(tmp.data(), 1, 4, file); mSignature = tmp;
-        fread(tmp.data(), 1, 4, file); STUFF_INTO(tmp, mSize, uint32_t);
+        CHUNK_TREADPROP("Chunk length", 4, PropU32Int);
+        STUFF_INTO(GetProperty("Chunk length").data, mSize, uint32_t);
     }
 
     void ReadStringName(FILE* file) {

@@ -10,6 +10,7 @@
 #include "chunk/chunkreaderguards.h"
 #include "mainwindow.h"
 #include "chunk/chunkcreator.h"
+#include "chunk/soundchunk.h"
 #include "chunk/dbvstationaryphupart_devdb.h"
 #include "chunk/dbvarticulationphu_devdb.h"
 #include "chunk/dbvarticulationphupart_devdb.h"
@@ -614,7 +615,7 @@ void MainWindow::on_actionExtractAllSamples_triggered()
     progDlg.setWindowModality(Qt::WindowModal);
     progDlg.setMinimumDuration(0);
     progDlg.setAutoReset(false);
-    progDlg.setMaximum(1);
+    progDlg.setMaximum(0);
     progDlg.setValue(0);
     progDlg.setLabelText(tr("Building extraction task list..."));
     progDlg.show();
@@ -639,6 +640,7 @@ void MainWindow::on_actionExtractAllSamples_triggered()
                     STUFF_INTO(pitchSeg->GetProperty("mPitch").data, relativePitch, float);
                     STUFF_INTO(pitchSeg->GetProperty("SND Sample count").data, task.extractBytes, uint32_t);
                     STUFF_INTO(pitchSeg->GetProperty("Frame count").data, task.totalFrames, uint32_t);
+                    task.extractBytes -= 0x800;
                     task.extractBytes *= sizeof(uint16_t);
                     task.midiPitch = Common::RelativePitchToMidiNote(relativePitch);
                     task.name = staSeg->GetName();
@@ -683,6 +685,7 @@ void MainWindow::on_actionExtractAllSamples_triggered()
                     STUFF_INTO(pitchSeg->GetProperty("mPitch").data, relativePitch, float);
                     STUFF_INTO(pitchSeg->GetProperty("SND Sample count").data, task.extractBytes, uint32_t);
                     STUFF_INTO(pitchSeg->GetProperty("Frame count").data, task.totalFrames, uint32_t);
+                    task.extractBytes -= 0x800;
                     task.extractBytes *= sizeof(uint16_t);
                     task.midiPitch = Common::RelativePitchToMidiNote(relativePitch);
                     task.name = beginPhoneme->GetName() + "[To]" + endPhoneme->GetName();
@@ -761,7 +764,7 @@ void MainWindow::on_actionExtractAllSamples_triggered()
               + ".wav";
 
 // Sometimes I want only CSV to be exported so I'll disable this section and recompile
-#if 0
+#if 1
         QFile dstWave(path);
         if(!dstWave.open(QFile::WriteOnly))
             continue;
@@ -1021,6 +1024,7 @@ void MainWindow::on_actionPack_DevDB_triggered()
 
     // Sanity check the filesystem structure
     const QString devDbFsRoot = mDdiPath.section('.', 0, -2) + '/';
+    size_t idx = 0;
     QProgressDialog progDlg(QString(),
                             QString(),
                             0,
@@ -1029,14 +1033,14 @@ void MainWindow::on_actionPack_DevDB_triggered()
     progDlg.setWindowModality(Qt::WindowModal);
     progDlg.setMinimumDuration(0);
     progDlg.setAutoReset(false);
-    progDlg.setMaximum(INT_MAX);
+    progDlg.setMaximum(0);
     progDlg.setValue(0);
     progDlg.setWindowTitle(tr("Sanity check on filesystem"));
     progDlg.show();
 
+    if (QMessageBox::question(this, "Check DB", "Do you wish to check for DB consistency before packing?") == QMessageBox::Yes)
     {
         LeadingQwordGuard qwg(false);
-        int idx = 0;
         // Stationaries
         auto stationaryRoot = SearchForChunkByPath({ "voice", "stationary" });
 
@@ -1049,8 +1053,8 @@ void MainWindow::on_actionPack_DevDB_triggered()
                     QString targetFile = devDbFsRoot
                                          + QString("voice/stationary/%1/%2/%3")
                                                .arg(voiceColor->GetName(),
-                                                    devDbDirEncode(staSeg->GetName()),
-                                                    devDbDirEncode(pitchSeg->GetName()));
+                                                    Common::devDbDirEncode(staSeg->GetName()),
+                                                    Common::devDbDirEncode(pitchSeg->GetName()));
                     progDlg.setLabelText(targetFile);
                     progDlg.setValue(idx++);
 
@@ -1087,10 +1091,11 @@ void MainWindow::on_actionPack_DevDB_triggered()
                     foreach(auto thirdPhoneme, endPhoneme->Children) {
                         QString targetFile = devDbFsRoot
                                              + QString("voice/articulation/%1/%2/%3")
-                                                   .arg(devDbDirEncode(beginPhoneme->GetName()),
-                                                        devDbDirEncode(endPhoneme->GetName()),
-                                                        devDbDirEncode(thirdPhoneme->GetName()));
+                                                   .arg(Common::devDbDirEncode(beginPhoneme->GetName()),
+                                                        Common::devDbDirEncode(endPhoneme->GetName()),
+                                                        Common::devDbDirEncode(thirdPhoneme->GetName()));
                         progDlg.setLabelText(targetFile);
+                        progDlg.setValue(idx++);
 
                         if (!QFile::exists(targetFile) && !QFile::exists(targetFile += ".part")) {
                             QMessageBox::critical(this, "Articulation triphoneme check fail", "Cannot find " + targetFile);
@@ -1129,9 +1134,10 @@ void MainWindow::on_actionPack_DevDB_triggered()
 
                 QString targetFile = devDbFsRoot
                                      + QString("voice/articulation/%1/%2")
-                                           .arg(devDbDirEncode(beginPhoneme->GetName()),
-                                                devDbDirEncode(endPhoneme->GetName()));
+                                           .arg(Common::devDbDirEncode(beginPhoneme->GetName()),
+                                                Common::devDbDirEncode(endPhoneme->GetName()));
                 progDlg.setLabelText(targetFile);
+                progDlg.setValue(idx++);
 
                 if (!QFile::exists(targetFile) && !QFile::exists(targetFile += ".part")) {
                     QMessageBox::critical(this, "Articulation check fail", "Cannot find " + targetFile);
@@ -1182,6 +1188,292 @@ void MainWindow::on_actionPack_DevDB_triggered()
 
         QMessageBox::information(this, "Consistency check pass", "All required files exists and DB index tree is consistent.");
     }
+
+
+    QFileDialog filedlg;
+    QString outputDir;
+
+    outputDir = filedlg.getExistingDirectory(
+        this,
+        tr("Save database..."),
+        QDir::currentPath());
+    if(outputDir.isEmpty())
+        return;
+
+    QString targetFile = outputDir + '/' + mDdiPath.section('/', -1).section('.', 0, -2) + ".ddi";
+    QFile ddi(targetFile);
+    if (ddi.exists()) {
+        if (QMessageBox::question(this, "DDI Exists", ddi.fileName() + " exists. Delete it?\n"
+                                                                       "Otherwise packing would abort.") == QMessageBox::Yes) {
+            ddi.remove();
+        } else {
+            return;
+        }
+    }
+    if (!QFile::copy(mDdiPath, targetFile)) {
+        QMessageBox::critical(this, "Cannot copy file", "Cannot copy database tree to " + targetFile);
+        return;
+    }
+
+    if (!ddi.open(QFile::ReadWrite)) {
+        QMessageBox::critical(this, "Cannot write file", "Cannot open target DDI " + targetFile);
+        return;
+    }
+
+    QFile ddb(targetFile.section('.', 0, -2) + ".ddb");
+    if (ddb.exists() &&
+        QMessageBox::question(this, "DDB Exists", ddb.fileName() + " exists. Delete it?") == QMessageBox::Yes) {
+        ddb.remove();
+    }
+    if (!ddb.open(QFile::ReadWrite)) {
+        QMessageBox::critical(this, "Cannot write file", "Cannot open target DDB " + targetFile);
+        return;
+    }
+
+    progDlg.reset();
+    progDlg.setWindowTitle("Pack DB");
+    progDlg.setMaximum(idx);
+    idx = 0;
+    {
+        LeadingQwordGuard qwg(false);
+        // Writer convenience function
+        auto writeOffset = [&](size_t writeToOffset, size_t offset) -> QByteArray {
+            auto ddiPtr = QByteArray((const char*)&offset, sizeof(offset));
+            ddi.seek(writeToOffset);
+            ddi.write(ddiPtr);
+            return ddiPtr;
+        };
+        auto write32 = [&](size_t writeToOffset, uint32_t data) -> QByteArray {
+            auto ddiPtr = QByteArray((const char*)&data, sizeof(data));
+            ddi.seek(writeToOffset);
+            ddi.write(ddiPtr);
+            return ddiPtr;
+        };
+
+        auto writeBlock = [&](QByteArray content, size_t ddiOffset, int offsetOffset = 0) -> size_t {
+            auto offset = ddb.pos();
+            ddb.write(content);
+            writeOffset(ddiOffset, offset + offsetOffset);
+            return offset;
+        };
+
+        // Stationaries
+        auto stationaryRoot = SearchForChunkByPath({ "voice", "stationary" });
+
+        // Iterate voice colors
+        foreach(auto voiceColor, stationaryRoot->Children) {
+            // Iterate stationary segments
+            foreach(auto staSeg, voiceColor->Children) {
+                // Iterate each pitch of the segment
+                foreach(auto pitchSeg, staSeg->Children) {
+                    QString targetFile = devDbFsRoot
+                                         + QString("voice/stationary/%1/%2/%3")
+                                               .arg(voiceColor->GetName(),
+                                                    Common::devDbDirEncode(staSeg->GetName()),
+                                                    Common::devDbDirEncode(pitchSeg->GetName()));
+                    progDlg.setLabelText(targetFile);
+                    progDlg.setValue(idx++);
+
+                    if (!QFile::exists(targetFile)) {
+                        QMessageBox::critical(this, "Stationary check fail", "Cannot find " + targetFile);
+                        return;
+                    }
+
+                    FILE* f = fopen(targetFile.toLatin1(), "rb");
+                    if (!f) {
+                        QMessageBox::warning(this, "Cannot open " + targetFile, QString("Error %1").arg(errno));
+                        continue;
+                    }
+                    auto STAp = new ChunkDBVStationaryPhUPart_DevDB;
+                    STAp->Read(f);
+                    fclose(f);
+
+                    // Write SMS Frames
+                    auto framesDir = pitchSeg->GetChildByName("<Frames>"); assert(framesDir);
+                    auto framesProps = framesDir->GetPropertiesMap(); framesProps.remove("Count");
+                    foreach (auto i, framesProps) {
+                        auto frame = STAp->framesToWrite.takeFirst(); assert(frame->ObjectSignature() == "FRM2");
+                        writeBlock(((ChunkSMSFrameChunk*)frame)->rawData, i.offset);
+                    }
+                    float relPitch; STUFF_INTO(STAp->GetProperty("mPitch").data, relPitch, float);
+                    qDebug() << staSeg->GetName() << Common::RelativePitchToNoteName(relPitch);
+                    // Write sound chunk
+                    {
+                        auto snd = (ChunkSoundChunk*)(STAp->GetChildByName("SND"));
+                        //double samplePerFrame = (double)snd->sampleCount / (double)STAp->allFramesCount;
+                        size_t samplePerFrame = 256;
+//                        auto optimizedFrom = snd->OptimizedFrom(samplePerFrame * (STAp->skipFrameCount + 1), STAp->GetProperty("mPitch").data);
+                        auto optimizedFrom = samplePerFrame * (STAp->skipFrameCount + 1);
+//                        writeBlock(snd->GetTruncatedChunk(optimizedFrom - 0x400,
+//                                                          optimizedFrom + samplePerFrame * STAp->frameCount + 0x400),
+//                                   pitchSeg->GetProperty("SND Sample offset").offset, 0x12 + 0x800);
+                        writeBlock(snd->GetTruncatedChunk(optimizedFrom - 0x400,
+                                                          optimizedFrom + samplePerFrame * STAp->frameCount + 0x400),
+                                   pitchSeg->GetProperty("SND Sample offset").offset, 0x12 + 0x800);
+                        write32(pitchSeg->GetProperty("SND Sample count").offset, samplePerFrame * STAp->frameCount + 0x800);
+                    }
+
+                    delete STAp;
+                }
+            }
+        }
+
+        // Articulation
+        auto articulationRoot = SearchForChunkByPath({ "voice", "articulation" });        // Iterate beginPhonemes
+        foreach(auto beginPhoneme, articulationRoot->Children) {
+            // Iterate end phonemes
+            foreach(auto endPhoneme, beginPhoneme->Children) {
+                // Triphonemes
+                if(endPhoneme->ObjectSignature() == "ART ") {
+                    foreach(auto thirdPhoneme, endPhoneme->Children) {
+                        QString targetFile = devDbFsRoot
+                                             + QString("voice/articulation/%1/%2/%3")
+                                                   .arg(Common::devDbDirEncode(beginPhoneme->GetName()),
+                                                        Common::devDbDirEncode(endPhoneme->GetName()),
+                                                        Common::devDbDirEncode(thirdPhoneme->GetName()));
+                        progDlg.setLabelText(targetFile);
+                        progDlg.setValue(idx++);
+
+                        if (!QFile::exists(targetFile) && !QFile::exists(targetFile += ".part")) {
+                            QMessageBox::critical(this, "Articulation triphoneme check fail", "Cannot find " + targetFile);
+                            return;
+                        }
+
+                        FILE* f = fopen(targetFile.toLatin1(), "rb");
+                        if (!f) {
+                            QMessageBox::warning(this, "Cannot open " + targetFile, QString("Error %1").arg(errno));
+                            continue;
+                        }
+                        auto ARTu = new ChunkDBVArticulationPhU_DevDB;
+                        ARTu->Read(f);
+                        fclose(f);
+
+                        for(auto pitch = 0; pitch < endPhoneme->Children.size(); pitch++) {
+                            auto pitchSeg = endPhoneme->Children[pitch];
+                            auto ARTp = (ChunkDBVArticulationPhUPart_DevDB*)(ARTu->Children[pitch]);
+
+                            // Write SMS Frames
+                            auto framesDir = pitchSeg->GetChildByName("<Frames>"); assert(framesDir);
+                            auto framesProps = framesDir->GetPropertiesMap(); framesProps.remove("Count");
+                            foreach (auto i, framesProps) {
+                                auto frame = ARTp->framesToWrite.takeFirst(); assert(frame->ObjectSignature() == "FRM2");
+                                writeBlock(((ChunkSMSFrameChunk*)frame)->rawData, i.offset);
+                            }
+                            // Write sound chunk
+                            {
+                                auto snd = (ChunkSoundChunk*)(ARTp->GetChildByName("SND"));
+                                double samplePerFrame = (double)snd->sampleCount / (double)ARTp->allFramesCount;
+                                auto sndOffset =
+                                    writeBlock(snd->GetTruncatedChunk(samplePerFrame * ARTp->skipFrameCount - 0x400,
+                                                                      samplePerFrame * (ARTp->skipFrameCount + ARTp->frameCount) + 0x400),
+                                               pitchSeg->GetProperty("SND Sample offset").offset, 0x12);
+                                writeOffset(pitchSeg->GetProperty("SND Sample offset+800").offset, sndOffset + 0x12 + 0x800); // FIXME
+                                write32(pitchSeg->GetProperty("SND Sample count").offset, samplePerFrame * ARTp->frameCount + 0x800);
+                            }
+                        }
+
+                        delete ARTu;
+                    }
+                    continue;
+                }
+
+                QString targetFile = devDbFsRoot
+                                     + QString("voice/articulation/%1/%2")
+                                           .arg(Common::devDbDirEncode(beginPhoneme->GetName()),
+                                                Common::devDbDirEncode(endPhoneme->GetName()));
+                progDlg.setLabelText(targetFile);
+                progDlg.setValue(idx++);
+
+                if (!QFile::exists(targetFile) && !QFile::exists(targetFile += ".part")) {
+                    QMessageBox::critical(this, "Articulation check fail", "Cannot find " + targetFile);
+                    return;
+                }
+
+                FILE* f = fopen(targetFile.toLatin1(), "rb");
+                if (!f) {
+                    QMessageBox::warning(this, "Cannot open " + targetFile, QString("Error %1").arg(errno));
+                    continue;
+                }
+                auto ARTu = new ChunkDBVArticulationPhU_DevDB;
+                ARTu->Read(f);
+                fclose(f);
+
+                // Iterate each pitch of the segment
+                if (ARTu->Children.count() != endPhoneme->Children.count()) {
+                    QMessageBox::critical(this,
+                                          "Articulation check fail",
+                                          QString("%1-%2 inconsistent sample count (Tree %3 Item %4)")
+                                              .arg(beginPhoneme->GetName(),
+                                                   endPhoneme->GetName())
+                                              .arg(endPhoneme->Children.count())
+                                              .arg(ARTu->Children.count())
+                                          );
+                    delete ARTu;
+                    return;
+                }
+
+                for(auto pitch = 0; pitch < endPhoneme->Children.size(); pitch++) {
+                    auto pitchSeg = endPhoneme->Children[pitch];
+                    auto ARTp = (ChunkDBVArticulationPhUPart_DevDB*)(ARTu->Children[pitch]);
+
+                    // Write SMS Frames
+                    auto framesDir = pitchSeg->GetChildByName("<Frames>"); assert(framesDir);
+                    auto framesProps = framesDir->GetPropertiesMap(); framesProps.remove("Count");
+                    foreach (auto i, framesProps) {
+                        auto frame = ARTp->framesToWrite.takeFirst(); assert(frame->ObjectSignature() == "FRM2");
+                        writeBlock(((ChunkSMSFrameChunk*)frame)->rawData, i.offset);
+                    }
+                    // Write sound chunk
+                    {
+                        auto snd = (ChunkSoundChunk*)(ARTp->GetChildByName("SND"));
+                        double samplePerFrame = (double)snd->sampleCount / (double)ARTp->allFramesCount;
+                        auto optimizedFrom = samplePerFrame * ARTp->skipFrameCount;
+                        if (ARTp->IsStartingWithVowel()) {
+                            optimizedFrom = snd->OptimizedFrom(samplePerFrame * (ARTp->skipFrameCount + 1), ARTp->GetProperty("mPitch").data);
+                        }
+                        auto sndOffset =
+                            writeBlock(snd->GetTruncatedChunk(optimizedFrom - 0x400,
+                                                              optimizedFrom + samplePerFrame * ARTp->frameCount + 0x400),
+                                       pitchSeg->GetProperty("SND Sample offset").offset, 0x12);
+                        writeOffset(pitchSeg->GetProperty("SND Sample offset+800").offset, sndOffset + 0x12 + 0x800); // FIXME
+                        write32(pitchSeg->GetProperty("SND Sample count").offset, samplePerFrame * ARTp->frameCount + 0x800);
+                    }
+                }
+
+                delete ARTu;
+            }
+        }
+
+        // Add a hash segment filled with 0x0DD171EA (DDIVIEW)
+        ddi.seek(0);
+        auto phase1Ddi = ddi.readAll();
+        QByteArray finalDdi;
+
+        // Hash is after PHDC, find its end
+        auto phdc = SearchForChunkByPath({ "<Phoneme Dictionary>" }); assert(phdc);
+        finalDdi.append("\0\0\0\0\0\0\0\0DBSe", 12); // Fix header; DevDB = "DBS ", DB = DBSe
+        finalDdi.append(phase1Ddi.left(phdc->GetOriginalOffset() + phdc->GetSize()).mid(12));
+
+        // 260 bytes of filler
+        QByteArray filler;
+        while (filler.size() < 260) {
+            filler.append("\x0d\xd1\x71\xea", 4);
+        }
+        filler.resize(260);
+
+        finalDdi.append(filler);
+
+        // Add final parts
+        finalDdi.append(phase1Ddi.mid(phdc->GetOriginalOffset() + phdc->GetSize()));
+
+        ddi.seek(0);
+        ddi.write(finalDdi);
+
+        ddi.close();
+        ddb.close();
+    }
+
+    QMessageBox::information(this, "Packing done", ddi.fileName() + '\n' + ddb.fileName());
 }
 
 

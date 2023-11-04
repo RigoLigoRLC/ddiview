@@ -3,6 +3,4 @@
 
 #include <QString>
 
-QString devDbDirEncode(QString input);
-
 #endif // UTIL_H

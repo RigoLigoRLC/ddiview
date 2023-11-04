@@ -44,3 +44,24 @@ QString Common::EscapeStringForCsv(QString str)
             ret += *i;
     return ret;
 }
+
+QString Common::devDbDirEncode(QString input)
+{
+    QString ret;
+    for (QChar c : input) {
+        if (c < 'a' || c > 'z') {
+            ret += '%' + QString::number(c.toLatin1()) + '%';
+        } else {
+            ret += c;
+        }
+    }
+    return ret;
+}
+
+
+float Common::RelativePitchToFrequency(float pitch)
+{
+    int midiNote = RelativePitchToMidiNote(pitch);
+
+    return 440.0 * pow(2.0, (midiNote - 69.0) / 12.0);
+}
