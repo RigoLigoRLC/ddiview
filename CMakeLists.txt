@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(ddiview VERSION 0.1 LANGUAGES CXX)
+project(ddiview VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -13,6 +13,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets PrintSupport)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets PrintSupport)
+
+add_subdirectory(thirdparty/ciglet)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -107,7 +109,7 @@ else()
     endif()
 endif()
 
-target_link_libraries(ddiview PRIVATE Qt${QT_VERSION_MAJOR}::Widgets qcustomplot)
+target_link_libraries(ddiview PRIVATE Qt${QT_VERSION_MAJOR}::Widgets qcustomplot ciglet)
 
 set_target_properties(ddiview PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
