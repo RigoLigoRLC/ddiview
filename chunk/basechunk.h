@@ -6,11 +6,12 @@
 #include <QMap>
 #include <stdio.h>
 #include "propertytype.h"
+#include "util/util.h"
 
 #define CHUNK_READPROP(name,size)            \
     do {                                     \
         QByteArray tmp(size, 0);          \
-        size_t offset = ftell(file); \
+        size_t offset = myftell64(file); \
         fread(tmp.data(), 1, size, file);      \
         mAdditionalProperties[name] = ChunkProperty {tmp, PropRawHex, offset};   \
     } while (0)
@@ -18,7 +19,7 @@
 #define CHUNK_TREADPROP(name,size,type)            \
     do {                                     \
         QByteArray tmp(size, 0);          \
-        size_t offset = ftell(file); \
+        size_t offset = myftell64(file); \
         fread(tmp.data(), 1, size, file);      \
         mAdditionalProperties[name] = ChunkProperty {tmp, type, offset};   \
     } while (0)
@@ -67,7 +68,8 @@ public:
     static bool DevDb;
     const static int ItemChunkRole,
                      ItemPropDataRole,
-                     ItemOffsetRole;
+                     ItemOffsetRole,
+                     DdbSoundReferredOffsetRole;
 
     static QByteArray ClassSignature() { return "    "; }
     virtual QByteArray ObjectSignature() { return ClassSignature(); }
@@ -116,7 +118,7 @@ protected:
     }
 
     void ReadOriginalOffset(FILE* file) {
-        mOriginalOffset = ftell(file);
+        mOriginalOffset = myftell64(file);
     }
 
 };

@@ -115,85 +115,94 @@
        <property name="title">
         <string>DDB</string>
        </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_4">
+       <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
-         <widget class="QSplitter" name="splitDdb">
+         <widget class="QSplitter" name="splitter_2">
           <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+           <enum>Qt::Vertical</enum>
           </property>
-          <property name="childrenCollapsible">
-           <bool>false</bool>
-          </property>
-          <widget class="QTreeWidget" name="treeStructureDdb">
-           <property name="uniformRowHeights">
-            <bool>true</bool>
+          <widget class="QSplitter" name="splitDdb">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
            </property>
-           <property name="allColumnsShowFocus">
-            <bool>true</bool>
+           <property name="childrenCollapsible">
+            <bool>false</bool>
            </property>
-           <attribute name="headerCascadingSectionResizes">
-            <bool>true</bool>
-           </attribute>
-           <column>
-            <property name="text">
-             <string>Chunk</string>
+           <widget class="QTreeWidget" name="treeStructureDdb">
+            <property name="uniformRowHeights">
+             <bool>true</bool>
             </property>
-           </column>
-           <column>
-            <property name="text">
-             <string>Type</string>
+            <property name="allColumnsShowFocus">
+             <bool>true</bool>
             </property>
-           </column>
+            <attribute name="headerCascadingSectionResizes">
+             <bool>true</bool>
+            </attribute>
+            <column>
+             <property name="text">
+              <string>Chunk</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>Type</string>
+             </property>
+            </column>
+           </widget>
+           <widget class="QWidget" name="verticalLayoutWidget_2">
+            <layout class="QVBoxLayout" name="verticalLayout_2">
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_3">
+               <item>
+                <widget class="QLabel" name="lblDdbProperties">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="text">
+                  <string>Item Properties</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="btnShowMediaTool">
+                 <property name="text">
+                  <string>Show Media Tool</string>
+                 </property>
+                 <property name="checkable">
+                  <bool>true</bool>
+                 </property>
+                 <property name="checked">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <widget class="QListWidget" name="listDdbProperties">
+               <property name="textElideMode">
+                <enum>Qt::ElideNone</enum>
+               </property>
+               <property name="flow">
+                <enum>QListView::TopToBottom</enum>
+               </property>
+               <property name="isWrapping" stdset="0">
+                <bool>false</bool>
+               </property>
+               <property name="resizeMode">
+                <enum>QListView::Fixed</enum>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
           </widget>
-          <widget class="QWidget" name="verticalLayoutWidget_2">
-           <layout class="QVBoxLayout" name="verticalLayout_2">
-            <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_3">
-              <item>
-               <widget class="QLabel" name="lblDdbProperties">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="text">
-                 <string>Item Properties</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnShowMediaTool">
-                <property name="text">
-                 <string>Show Media Tool</string>
-                </property>
-                <property name="checkable">
-                 <bool>true</bool>
-                </property>
-                <property name="checked">
-                 <bool>false</bool>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <widget class="QListWidget" name="listDdbProperties">
-              <property name="textElideMode">
-               <enum>Qt::ElideNone</enum>
-              </property>
-              <property name="flow">
-               <enum>QListView::TopToBottom</enum>
-              </property>
-              <property name="isWrapping" stdset="0">
-               <bool>false</bool>
-              </property>
-              <property name="resizeMode">
-               <enum>QListView::Fixed</enum>
-              </property>
-             </widget>
-            </item>
-           </layout>
+          <widget class="QStackedWidget" name="stkMediaView">
+           <widget class="QWidget" name="pageWaveform"/>
+           <widget class="QWidget" name="page_4"/>
           </widget>
          </widget>
         </item>
@@ -209,7 +218,7 @@
      <x>0</x>
      <y>0</y>
      <width>1051</width>
-     <height>21</height>
+     <height>17</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuOpen">

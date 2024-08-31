@@ -29,6 +29,12 @@
 #include "item_phonemegroup.h"
 #include "item_phoneticunit.h"
 
+// DDB
+#include "refsoundchunk.h"
+
+// Misc
+#include "skipchunk.h"
+
 #include <QDebug>
 
 ChunkCreator *ChunkCreator::mInstance = nullptr;
@@ -38,6 +44,7 @@ bool BaseChunk::ArrayLeadingChunkName = false;
 const int BaseChunk::ItemChunkRole = Qt::UserRole + 1;
 const int BaseChunk::ItemPropDataRole = Qt::UserRole + 2;
 const int BaseChunk::ItemOffsetRole = Qt::UserRole + 2;
+const int BaseChunk::DdbSoundReferredOffsetRole = Qt::UserRole + 3;
 
 ChunkCreator::ChunkCreator(QObject *parent)
     : QObject{parent}
@@ -73,6 +80,10 @@ ChunkCreator::ChunkCreator(QObject *parent)
     AddToFactory<ItemPhonemeGroup>();
     AddToFactory<ItemPhoneticUnit>();
 
+    AddToFactory<ChunkRefSoundChunk>();
+
+    AddToFactory<ChunkSkipChunk>();
+
     for(auto i : FactoryMethods.keys())
         qDebug() << i << FactoryMethods[i];
 
@@ -88,7 +99,7 @@ ChunkCreator *ChunkCreator::Get()
 
 BaseChunk *ChunkCreator::ReadFor(QByteArray signature, FILE *file)
 {
-    if(mProgressDlg) mProgressDlg->setValue(ftell(file));
+    if(mProgressDlg) mProgressDlg->setValue(myftell64(file));
     if(!FactoryMethods.contains(signature))
         return nullptr;
     auto ret = FactoryMethods[signature]();

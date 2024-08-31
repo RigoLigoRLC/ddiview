@@ -19,7 +19,7 @@ BaseChunk* ParseDdi(QString path)
     char signatureBuf[4];
     fgetpos(file, &pos);
     // Skip Leading QWORD if needed
-    if(BaseChunk::HasLeadingQword) fseek(file, 8, SEEK_CUR);
+    if(BaseChunk::HasLeadingQword) myfseek64(file, 8, SEEK_CUR);
     fread(signatureBuf, 1, 4, file);
     fsetpos(file, &pos);
 

@@ -54,7 +54,7 @@ protected:
             fpos_t pos;
             fgetpos(file, &pos);
             // Skip Leading QWORD if needed
-            if(HasLeadingQword) fseek(file, 8, SEEK_CUR);
+            if(HasLeadingQword) myfseek64(file, 8, SEEK_CUR);
             fread(signatureBuf, 1, 4, file);
             fsetpos(file, &pos);
 

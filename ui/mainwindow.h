@@ -4,8 +4,10 @@
 #include <QMainWindow>
 #include <QListWidgetItem>
 #include <QTreeWidgetItem>
+#include <QProgressDialog>
 #include <QLabel>
 #include "chunk/basechunk.h"
+#include "qcustomplot.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -23,6 +25,8 @@ protected:
     void SetupUI();
 
     void BuildTree(BaseChunk* chunk, QTreeWidgetItem* into);
+
+    void BuildDdb(QProgressDialog* dlg);
 
     BaseChunk *SearchForChunkByPath(QStringList paths);
 
@@ -57,14 +61,21 @@ private slots:
 
     void on_listProperties_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
 
+    void on_treeStructureDdb_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous);
+
 private:
     Ui::MainWindow *ui;
     QLabel *mLblStatusFilename,
            *mLblStatusDdbExists,
            *mLblBlockOffset,
            *mLblPropertyOffset;
+    QCustomPlot *mWaveformPlot;
+    QCPGraph *mWaveformGraph;
 
     BaseChunk* mTreeRoot;
+    std::map<size_t, BaseChunk*> mDdbChunks;
+    QFile mDdbFile;
+    QDataStream mDdbStream;
 
 private:
     QString mDatabaseDirectory;

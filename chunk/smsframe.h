@@ -15,17 +15,19 @@ public:
     virtual QByteArray ObjectSignature() { return ClassSignature(); }
 
     virtual void Read(FILE *file) {
-        auto originalOffset = ftell(file);
+        // auto originalOffset = ftell(file);
 
         ReadBlockSignature(file);
 
-        QFile snd;
-        if (snd.open(file, QFile::ReadOnly)) {
-            snd.seek(originalOffset);
-            rawData = snd.read(mSize);
-            fseek(file, snd.pos(), SEEK_SET);
-            snd.close();
-        }
+        // QFile snd;
+        // if (snd.open(file, QFile::ReadOnly)) {
+        //     snd.seek(originalOffset);
+        //     rawData = snd.read(mSize);
+        //     fseek(file, snd.pos(), SEEK_SET);
+        //     snd.close();
+        // }
+
+        fseek(file, mSize - 8, SEEK_CUR);
     }
 
     virtual QString Description() {

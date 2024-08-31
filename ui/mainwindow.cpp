@@ -26,7 +26,8 @@
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
+    , ui(new Ui::MainWindow),
+    mDdbStream(&mDdbFile)
 {
     ui->setupUi(this);
 
@@ -57,6 +58,12 @@ void MainWindow::SetupUI()
     mDdbLoaded = false;
     mDdbSelectionDirty = false;
 
+    auto pageWvfmLay = new QVBoxLayout;
+    ui->pageWaveform->setLayout(pageWvfmLay);
+    pageWvfmLay->addWidget((mWaveformPlot = new QCustomPlot));
+    mWaveformPlot->yAxis->setRange(-1.0, 1.0);
+    mWaveformGraph = new QCPGraph(mWaveformPlot->xAxis, mWaveformPlot->yAxis);
+
     resize(1000, 800);
 }
 
@@ -79,6 +86,153 @@ void MainWindow::BuildTree(BaseChunk *chunk, QTreeWidgetItem *into)
     foreach(auto i, chunk->Children) {
         BuildTree(i, rootItem);
     }
+}
+
+void MainWindow::BuildDdb(QProgressDialog *dlg)
+{
+    FILE* f = fopen(mDdbPath.toLocal8Bit(), "rb");
+    if (!f) {
+        return;
+    }
+
+    dlg->reset();
+    dlg->setLabelText(tr("Reading DDB chunks..."));
+
+    myfseek64(f, 0, SEEK_END);
+    auto length = myftell64(f);
+    dlg->setMaximum(length >> 4); // Qt uses 32 bit integer only, we must discard a few bits
+    myfseek64(f, 0, SEEK_SET);
+
+    auto rootItem = ui->treeStructureDdb;
+    uint64_t lastOffset = -1;
+
+    BaseChunk::HasLeadingQword = false;
+    while (true) {
+        char sig[5] = {0, 0, 0, 0, 0};
+        assert(myftell64(f) > lastOffset || lastOffset == -1);
+
+        if (myftell64(f) >= length) {
+            break;
+        }
+
+        lastOffset = myftell64(f);
+        fread(sig, 1, 4, f);
+        myfseek64(f, myftell64(f) - 4, SEEK_SET);
+        dlg->setValue(myftell64(f) >> 4);
+
+        if (!strncmp(sig, "SND ", 4) || !strncmp(sig, "FRM2", 4)) {
+            auto chk = ChunkCreator::Get()->ReadFor(QByteArray(sig, 4), f);
+            // We DELIBERATELY use END offset so that lower_bound will happily return
+            // the first chunk tail that we will meet after the requested point
+            mDdbChunks[chk->GetOriginalOffset() + chk->GetSize() - 1] = chk;
+        } else {
+            // Skip chunk
+            auto chk = ChunkCreator::Get()->ReadFor("____Skipped", f);
+            mDdbChunks[chk->GetOriginalOffset() + chk->GetSize() - 1] = chk;
+        }
+    }
+
+    // DDI -> DDB Linkage
+    auto procPitch = [=](BaseChunk* pitch, QTreeWidgetItem* treeParent){
+        auto phPitch = new QTreeWidgetItem(treeParent, {pitch->GetName()});
+
+        auto phSnd = new QTreeWidgetItem(phPitch, {tr("Sound")});
+        auto sndOffsetProp = pitch->GetProperty("SND Sample offset");
+        if (sndOffsetProp.type == PropHex64) {
+            uint64_t offset;
+            STUFF_INTO(sndOffsetProp.data, offset, uint64_t);
+            auto foundChunk = mDdbChunks.lower_bound(offset);
+            if (foundChunk->second->ObjectSignature() == "SND ") {
+                phSnd->setText(1, QString::number(offset, 16));
+                phSnd->setData(0, BaseChunk::ItemChunkRole, QVariant::fromValue<BaseChunk*>(foundChunk->second));
+                mDdbChunks.erase(foundChunk);
+            } else {
+                qDebug() << "SND Look for:" << QString::number(offset, 16) << "Found:"
+                         << QString::number(foundChunk->second->GetOriginalOffset(), 16)
+                         << "Signature" << QString(foundChunk->second->GetSignature());
+            }
+        }
+
+        auto frames = pitch->GetChildByName("<Frames>");
+        if (!frames) return;
+
+#if 0
+        auto &&propMap = frames->GetPropertiesMap();
+        for (auto it = propMap.begin(); it != propMap.end(); it++) {
+            if (it.key() == "Count") continue;
+            if (it->type == PropHex64) {
+                auto frame = new QTreeWidgetItem(phPitch);
+                uint64_t offset;
+                STUFF_INTO(it->data, offset, uint64_t);
+                auto foundChunk = mDdbChunks.lower_bound(offset);
+                if (foundChunk->second->GetOriginalOffset() == offset && foundChunk->second->ObjectSignature() == "FRM2") {
+                    // Must exactly match
+                    frame->setText(0, it.key());
+                    frame->setText(1, QString::number(offset, 16));
+                    frame->setData(0, BaseChunk::ItemChunkRole, QVariant::fromValue<BaseChunk*>(foundChunk->second));
+                    mDdbChunks.erase(foundChunk);
+                } else {
+                    qDebug() << "FRM2 Look for:" << QString::number(offset, 16) << "Found:"
+                             << QString::number(foundChunk->second->GetOriginalOffset(), 16)
+                             << "Signature" << QString(foundChunk->second->GetSignature());
+                }
+            }
+        }
+#endif
+    };
+
+    auto stationaryDdbRoot = new QTreeWidgetItem(rootItem, {"stationary"});
+    auto stationaryRoot = SearchForChunkByPath({"voice", "stationary", "normal"});
+    if (stationaryRoot) {
+        foreach (auto const ph, stationaryRoot->Children) {
+            auto phDdb = new QTreeWidgetItem(stationaryDdbRoot, {ph->GetName()});
+            foreach (auto const pitch, ph->Children) {
+                procPitch(pitch, phDdb);
+            }
+        }
+    }
+
+    auto articulationDdbRoot = new QTreeWidgetItem(rootItem, {"articulation"});
+    auto articulationRoot = SearchForChunkByPath({"voice", "articulation"});
+    if (articulationRoot) {
+        foreach (auto const ph1, articulationRoot->Children) {
+            auto ph1Ddb = new QTreeWidgetItem(articulationDdbRoot, {ph1->GetName()});
+            foreach (auto const ph2, ph1->Children) {
+                auto ph2Ddb = new QTreeWidgetItem(ph1Ddb, {ph2->GetName()});
+
+                if (ph2->GetSignature() == "ART ") {
+                    // Triphoneme
+                    foreach (auto const ph3, ph2->Children) {
+                        auto ph3Ddb = new QTreeWidgetItem(ph2Ddb, {ph3->GetName()});
+                        foreach (auto const pitch, ph3->Children) {
+                            procPitch(pitch, ph3Ddb);
+                        }
+                    }
+                } else {
+                    // Diphoneme
+                    foreach (auto const pitch, ph2->Children) {
+                        procPitch(pitch, ph2Ddb);
+                    }
+                }
+            }
+        }
+    }
+
+    // Orphan chunks
+#if 0
+    for (auto it = mDdbChunks.begin(); it != mDdbChunks.end(); it++) {
+        auto chunkDdb = new QTreeWidgetItem(rootItem, {tr("Orphan chunk <%1>").arg(QString(it->second->GetSignature()))});
+        chunkDdb->setText(1, QString::number(it->second->GetOriginalOffset(), 16));
+        chunkDdb->setData(0, BaseChunk::ItemChunkRole, QVariant::fromValue<BaseChunk*>(it->second));
+    }
+#endif
+    mDdbChunks.clear();
+
+    fclose(f);
+
+    mDdbFile.close();
+    mDdbFile.setFileName(mDdbPath);
+    mDdbFile.open(QFile::OpenModeFlag::ReadOnly);
 }
 
 BaseChunk *MainWindow::SearchForChunkByPath(QStringList paths)
@@ -261,6 +415,7 @@ void MainWindow::on_actionOpen_triggered()
                             this);
     progDlg.setWindowModality(Qt::WindowModal);
     progDlg.setMinimumDuration(0);
+    progDlg.setAutoClose(false);
     mLblStatusFilename->setText(fileBasename);
     mDatabaseDirectory = filename.section('/', 0, -2);
 
@@ -272,7 +427,12 @@ void MainWindow::on_actionOpen_triggered()
     mTreeRoot = root;
     BuildTree(root, nullptr);
 
-    EnsureDdbExists();
+    if (EnsureDdbExists()) {
+        // DDB read. DDB is not cached to RAM because it is very large, data is read on demand
+        BuildDdb(&progDlg);
+    }
+
+    progDlg.close();
 }
 
 
@@ -1483,5 +1643,42 @@ void MainWindow::on_listProperties_currentItemChanged(QListWidgetItem *current, 
                                               current->data(BaseChunk::ItemOffsetRole).toULongLong() :
                                                           0
                                                           , 16).toUpper());
+}
+
+
+void MainWindow::on_treeStructureDdb_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous)
+{
+    if(!current)
+        return;
+
+    auto chunk = current->data(0, BaseChunk::ItemChunkRole).value<BaseChunk*>();
+    if (!chunk) {
+        return;
+    }
+
+    auto props = chunk->GetPropertiesMap();
+
+    if (chunk->GetSignature() == "SND ") {
+        // Read sound and put it onto the customplot
+        mDdbFile.seek(chunk->GetOriginalOffset() + 0x14);
+        mDdbStream.setDevice(&mDdbFile);
+
+        int sampleCount, sampleRate;
+        STUFF_INTO(props["Sample count"].data, sampleCount, int);
+        STUFF_INTO(props["Sample rate"].data, sampleRate, int);
+        QVector<double> keys, vals;
+        keys.reserve(sampleCount);
+        vals.reserve(sampleCount);
+        double sampleToSecFac = 1.0 / sampleRate, sampleValNormFac = 1.0 / 32768.0;
+        for (int i = 0; i < sampleCount; i++) {
+            int16_t sample;
+            mDdbStream >> sample;
+            keys.append(i * sampleToSecFac);
+            vals.append(sample * sampleValNormFac);
+        }
+        mWaveformPlot->xAxis->setRange(0.0, sampleCount * sampleToSecFac);
+        mWaveformGraph->setData(keys, vals, true);
+        mWaveformPlot->replot();
+    }
 }
 
