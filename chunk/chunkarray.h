@@ -30,8 +30,8 @@ public:
 
 protected:
     void ReadArrayHead(FILE* file) {
-        CHUNK_READPROP("unk4", 4);
-        CHUNK_TREADPROP("UseEmptyChunk", 4, PropU32Int);
+        CHUNK_TREADPROP("ArrayFlags", 4, PropU32Int);      // array flags
+        CHUNK_TREADPROP("UseEmptyChunk", 4, PropU32Int);   // use empty chunk as placeholder
     }
 
     void ReadArrayBody(FILE* file, uint32_t maxCount = 1) {

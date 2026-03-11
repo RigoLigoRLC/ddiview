@@ -14,8 +14,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets PrintSupport)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets PrintSupport)
 
-add_subdirectory(thirdparty/ciglet)
-
 set(PROJECT_SOURCES
         main.cpp
         common.h
@@ -38,6 +36,9 @@ set(PROJECT_SOURCES
         ui/mediatoolwindow.h
         ui/mediatoolwindow.cpp
         ui/mediatoolwindow.ui
+        ui/vqmgeneratordialog.h
+        ui/vqmgeneratordialog.cpp
+        ui/vqmgeneratordialog.ui
 
         ui/propertycontextmenu.h
         ui/propertycontextmenu.cpp
@@ -47,6 +48,8 @@ set(PROJECT_SOURCES
 
         util/util.h
         util/util.cpp
+        util/smsgenerator.h
+        util/smsgenerator.cpp
 
         chunk/propertytype.h
         chunk/propertytype.cpp
@@ -109,7 +112,7 @@ else()
     endif()
 endif()
 
-target_link_libraries(ddiview PRIVATE Qt${QT_VERSION_MAJOR}::Widgets qcustomplot ciglet)
+target_link_libraries(ddiview PRIVATE Qt${QT_VERSION_MAJOR}::Widgets qcustomplot)
 
 set_target_properties(ddiview PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com

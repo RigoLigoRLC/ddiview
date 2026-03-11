@@ -3,6 +3,7 @@
 
 #include "chunk/dbvarticulationphupart_devdb.h"
 #include "chunkarray.h"
+#include "util/util.h"
 
 class ChunkDBVArticulationPhU_DevDB : public ChunkChunkArray {
 public:
@@ -16,11 +17,11 @@ public:
     virtual void Read(FILE *file) {
         ReadBlockSignature(file);
         ReadArrayHead(file);
-        CHUNK_READPROP("unk1", 4);
-        CHUNK_READPROP("unk2", 4);
-        CHUNK_READPROP("unk3", 4);
-        CHUNK_READPROP("unk4", 4);
-        CHUNK_READPROP("unk5", 4);
+        CHUNK_TREADPROP("Index", 4, PropU32Int);           // phoneme index
+        CHUNK_TREADPROP("TargetIndex1", 4, PropU32Int);    // target index 1
+        CHUNK_TREADPROP("TargetIndex2", 4, PropU32Int);    // target index 2
+        CHUNK_TREADPROP("TargetIndex3", 4, PropU32Int);    // target index 3
+        CHUNK_TREADPROP("TargetIndex4", 4, PropU32Int);    // target index 4
 
 //        ReadArrayBody(file, 0);
         // Read subchunk count
@@ -35,7 +36,7 @@ public:
             fpos_t pos;
             fgetpos(file, &pos);
             // Skip Leading QWORD if needed
-            if(HasLeadingQword) fseek(file, 8, SEEK_CUR);
+            if(HasLeadingQword) myfseek64(file, 8, SEEK_CUR);
             fread(signatureBuf, 1, 4, file);
             fsetpos(file, &pos);
 

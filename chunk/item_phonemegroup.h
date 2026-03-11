@@ -22,8 +22,8 @@ public:
         fread(tmp.data(), 1, length, file);
         mName = tmp;
 
-        CHUNK_READPROP("Phoneme count", 4);
-        CHUNK_READPROP("unk1", 4);
+        CHUNK_TREADPROP("Phoneme count", 4, PropU32Int);
+        CHUNK_TREADPROP("GroupType", 4, PropU32Int);       // group type
 
         // Read phoneme items
         uint32_t count; STUFF_INTO(GetProperty("Phoneme count").data, count, uint32_t);

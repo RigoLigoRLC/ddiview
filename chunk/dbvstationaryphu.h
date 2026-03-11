@@ -16,8 +16,8 @@ public:
         ReadBlockSignature(file);
         ReadArrayHead(file);
         CHUNK_TREADPROP("Index", 4, PropU32Int);
-        CHUNK_READPROP("unk2", 4);
-        CHUNK_READPROP("unk3", 4);
+        CHUNK_TREADPROP("PitchRangeHigh", 4, PropF32);  // pitch range upper bound
+        CHUNK_TREADPROP("PitchRangeLow", 4, PropF32);   // pitch range lower bound
         ReadArrayBody(file, 0);
         ReadStringName(file);
     }

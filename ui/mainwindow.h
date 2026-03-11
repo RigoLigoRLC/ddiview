@@ -59,6 +59,8 @@ private slots:
 
     void on_actionPack_DevDB_triggered();
 
+    void on_actionVqmGenerator_triggered();
+
     void on_listProperties_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
 
     void on_treeStructureDdb_currentItemChanged(QTreeWidgetItem *current, QTreeWidgetItem *previous);

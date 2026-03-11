@@ -16,12 +16,17 @@ public:
         BaseChunk::Read(file);
         QByteArray tmp(18, 0);
         fread(tmp.data(), 1, 18, file);
+        // Trim at first null byte
+        int nullPos = tmp.indexOf('\0');
+        if (nullPos >= 0) {
+            tmp.truncate(nullPos);
+        }
         mName = tmp;
 
-        CHUNK_READPROP("unk1", 4);
-        CHUNK_READPROP("unk2", 4);
-        CHUNK_READPROP("unk3", 4);
-        CHUNK_READPROP("Unvoiced", 1);
+        CHUNK_TREADPROP("PhonemeIndex", 4, PropU32Int);     // phoneme index
+        CHUNK_TREADPROP("HasEpREnvelope", 4, PropU32Int);   // has EpR envelope
+        CHUNK_TREADPROP("HasResEnvelope", 4, PropU32Int);   // has resonance envelope
+        CHUNK_TREADPROP("Unvoiced", 1, PropU8Int);          // is unvoiced
     }
 
     virtual QString Description() {

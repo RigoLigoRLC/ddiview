@@ -2,6 +2,7 @@
 #define SKIPCHUNK_H
 
 #include "basechunk.h"
+#include "util/util.h"
 
 class ChunkSkipChunk : public BaseChunk {
 public:
@@ -16,7 +17,7 @@ public:
         ReadBlockSignature(file);
         mName = QString("<Skipped %1>").arg(QString(mSignature));
 
-        fseek(file, mSize - 8, SEEK_CUR);
+        myfseek64(file, mSize - 8, SEEK_CUR);
     }
 
     virtual QString Description() {

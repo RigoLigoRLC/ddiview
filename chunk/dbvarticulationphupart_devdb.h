@@ -22,11 +22,11 @@ public:
 //        ItemDirectory* sectionDir = nullptr;
         ReadBlockSignature(file);
         ReadArrayHead(file);
-        CHUNK_TREADPROP("unk1", 8, PropHex64);
-        CHUNK_READPROP("unk2", 2);
+        CHUNK_TREADPROP("TimeInfo", 8, PropHex64);         // time info
+        CHUNK_TREADPROP("Flags", 2, PropU16Int);           // flags
         CHUNK_TREADPROP("mPitch", 4, PropF32);
         CHUNK_TREADPROP("Average pitch", 4, PropF32);
-        CHUNK_READPROP("unk5", 4);
+        CHUNK_TREADPROP("PitchDeviation", 4, PropF32);     // pitch deviation
         CHUNK_TREADPROP("Dynamic", 4, PropF32);
         CHUNK_TREADPROP("Tempo", 4, PropF32);
 
@@ -37,7 +37,7 @@ public:
 
         // Calculate frame count on the fly
         ChunkSMSGenericTrackChunk* epr;
-        size_t tempSkipFrameCount = SIZE_MAX;
+        size_t tempSkipFrameCount = 0;
         if ((epr = decltype(epr)(GetChildByName("EpR")))) {
             for (auto i : epr->Children) {
                 auto rgn = (ChunkSMSRegionChunk*)i;

@@ -16,12 +16,12 @@ public:
     virtual void Read(FILE *file) {
         ReadBlockSignature(file);
 
-        CHUNK_TREADPROP("unk1", 4, PropU32Int);
-        CHUNK_TREADPROP("unk2", 4, PropU32Int);
-        CHUNK_TREADPROP("unk3", 4, PropU32Int);
-        CHUNK_TREADPROP("unk4", 8, PropU64Int);
-        CHUNK_TREADPROP("unk5", 4, PropU32Int);
-        CHUNK_TREADPROP("unk8", 1, PropU8Int);
+        CHUNK_TREADPROP("TrackType", 4, PropU32Int);       // track type
+        CHUNK_TREADPROP("Flags", 4, PropU32Int);           // flags
+        CHUNK_TREADPROP("SampleRate", 4, PropU32Int);      // sample rate
+        CHUNK_TREADPROP("Duration", 8, PropF64);           // duration
+        CHUNK_TREADPROP("FrameRate", 4, PropU32Int);       // frame rate
+        CHUNK_TREADPROP("Precision", 1, PropU8Int);        // precision
         CHUNK_TREADPROP("Region count", 4, PropU32Int);
 
         uint32_t rgnCount; STUFF_INTO(GetProperty("Region count").data, rgnCount, uint32_t);

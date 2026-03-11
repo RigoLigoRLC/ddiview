@@ -88,6 +88,9 @@ public:
     BaseChunk* GetChildByName(QString name) {
         foreach(auto i, Children) if(i->mName == name) return i; return nullptr;
     }
+    BaseChunk* GetChildBySignature(QByteArray sig) {
+        foreach(auto i, Children) if(i->mSignature == sig) return i; return nullptr;
+    }
 
     QVector<BaseChunk*> Children;
 

@@ -2,6 +2,7 @@
 #define REFSOUNDCHUNK_H
 
 #include "basechunk.h"
+#include "util/util.h"
 
 class ChunkRefSoundChunk : public BaseChunk {
 public:
@@ -10,11 +11,10 @@ public:
     }
 
     static QByteArray ClassSignature() { return "____RefSND "; }
-    virtual QByteArray ObjectSignature() { return ClassSignature(); }
+    // ObjectSignature returns the actual file signature, not the class signature
+    virtual QByteArray ObjectSignature() { return "SND "; }
 
     virtual void Read(FILE *file) {
-        auto originalOffset = ftell(file);
-
         ReadBlockSignature(file);
         CHUNK_TREADPROP("Sample rate", 4, PropU32Int);
         CHUNK_TREADPROP("Channel count", 2, PropU16Int);
@@ -22,9 +22,9 @@ public:
 
         STUFF_INTO(GetProperty("Sample count").data, sampleCount, uint32_t);
 
-        sampleOffset = ftell(file);
+        sampleOffset = myftell64(file);
         sampleBytes = mSize - 0x12;
-        fseek(file, sampleBytes, SEEK_CUR); // Skip sample data
+        myfseek64(file, sampleBytes, SEEK_CUR); // Skip sample data
     }
 
     virtual QString Description() {

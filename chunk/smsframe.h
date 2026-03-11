@@ -2,6 +2,7 @@
 #define SMSFRAME_H
 
 #include "basechunk.h"
+#include "util/util.h"
 #include <QByteArray>
 #include <QFile>
 
@@ -15,19 +16,18 @@ public:
     virtual QByteArray ObjectSignature() { return ClassSignature(); }
 
     virtual void Read(FILE *file) {
-        // auto originalOffset = ftell(file);
+        auto originalOffset = myftell64(file);
 
         ReadBlockSignature(file);
 
-        // QFile snd;
-        // if (snd.open(file, QFile::ReadOnly)) {
-        //     snd.seek(originalOffset);
-        //     rawData = snd.read(mSize);
-        //     fseek(file, snd.pos(), SEEK_SET);
-        //     snd.close();
-        // }
-
-        fseek(file, mSize - 8, SEEK_CUR);
+        // Read the entire frame data for later writing
+        QFile f;
+        if (f.open(file, QFile::ReadOnly)) {
+            f.seek(originalOffset);
+            rawData = f.read(mSize);
+            myfseek64(file, originalOffset + mSize, SEEK_SET);
+            f.close();
+        }
     }
 
     virtual QString Description() {

@@ -20,13 +20,13 @@ public:
         ItemDirectory* sectionDir = nullptr;
         ReadBlockSignature(file);
         ReadArrayHead(file);
-        CHUNK_TREADPROP("unk1", 8, PropHex64);
-        CHUNK_READPROP("unk2", 2);
-        CHUNK_TREADPROP("mPitch", 4, PropF32);
-        CHUNK_TREADPROP("Average pitch", 4, PropF32);
-        CHUNK_READPROP("unk5", 4);
-        CHUNK_TREADPROP("Dynamic", 4, PropF32);
-        CHUNK_TREADPROP("Tempo", 4, PropF32);
+        CHUNK_TREADPROP("TimeInfo", 8, PropHex64);         // time info
+        CHUNK_TREADPROP("Flags", 2, PropU16Int);           // flags
+        CHUNK_TREADPROP("mPitch", 4, PropF32);             // relative pitch
+        CHUNK_TREADPROP("Average pitch", 4, PropF32);      // average pitch
+        CHUNK_TREADPROP("PitchDeviation", 4, PropF32);     // pitch deviation
+        CHUNK_TREADPROP("Dynamic", 4, PropF32);            // dynamics/velocity
+        CHUNK_TREADPROP("Tempo", 4, PropF32);              // tempo
         ReadArrayBody(file, 0);
 
         CHUNK_TREADPROP("Frame count", 4, PropU32Int);
@@ -43,8 +43,8 @@ public:
         CHUNK_TREADPROP("SND Sample count", 4, PropU32Int);
         CHUNK_TREADPROP("SND Sample offset", 8, PropHex64);
         CHUNK_TREADPROP("SND Sample offset+800", 8, PropHex64);
-        CHUNK_TREADPROP("Guessed_Section count", 4, PropU32Int);
-        STUFF_INTO(GetProperty("Guessed_Section count").data, sectionCount, uint32_t);
+        CHUNK_TREADPROP("Section count", 4, PropU32Int);   // half-phone section count
+        STUFF_INTO(GetProperty("Section count").data, sectionCount, uint32_t);
         if(sectionCount) {
             sectionDir = new ItemDirectory;
             sectionDir->SetName("<sections>");

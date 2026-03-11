@@ -7,10 +7,12 @@
 #include <QInputDialog>
 #include <QTableWidget>
 #include <QMessageBox>
+#include <QCryptographicHash>
 #include "chunk/chunkreaderguards.h"
 #include "mainwindow.h"
 #include "chunk/chunkcreator.h"
 #include "chunk/soundchunk.h"
+#include "chunk/refsoundchunk.h"
 #include "chunk/dbvstationaryphupart_devdb.h"
 #include "chunk/dbvarticulationphu_devdb.h"
 #include "chunk/dbvarticulationphupart_devdb.h"
@@ -20,7 +22,9 @@
 #include "statisticsresultdialog.h"
 #include "articulationtabledialog.h"
 #include "ddiexportjsonoptionsdialog.h"
+#include "vqmgeneratordialog.h"
 #include "propertycontextmenu.h"
+#include "util/smsgenerator.h"
 #include "common.h"
 #include "util/util.h"
 
@@ -153,14 +157,16 @@ void MainWindow::BuildDdb(QProgressDialog *dlg)
             uint64_t offset;
             STUFF_INTO(sndOffsetProp.data, offset, uint64_t);
             auto foundChunk = mDdbChunks.lower_bound(offset);
-            if (foundChunk->second->ObjectSignature() == "SND ") {
+            if (foundChunk != mDdbChunks.end() && foundChunk->second->ObjectSignature() == "SND ") {
                 phSnd->setText(1, QString::number(offset, 16));
                 phSnd->setData(0, BaseChunk::ItemChunkRole, QVariant::fromValue<BaseChunk*>(foundChunk->second));
+                // Store the pitch chunk for section info access
+                phSnd->setData(0, BaseChunk::DdbSoundReferredOffsetRole, QVariant::fromValue<BaseChunk*>(pitch));
                 mDdbChunks.erase(foundChunk);
             } else {
                 qDebug() << "SND Look for:" << QString::number(offset, 16) << "Found:"
-                         << QString::number(foundChunk->second->GetOriginalOffset(), 16)
-                         << "Signature" << QString(foundChunk->second->GetSignature());
+                         << (foundChunk != mDdbChunks.end() ? QString::number(foundChunk->second->GetOriginalOffset(), 16) : "none")
+                         << "Signature" << (foundChunk != mDdbChunks.end() ? QString(foundChunk->second->GetSignature()) : "none");
             }
         }
 
@@ -1475,18 +1481,39 @@ void MainWindow::on_actionPack_DevDB_triggered()
                     qDebug() << staSeg->GetName() << Common::RelativePitchToNoteName(relPitch);
                     // Write sound chunk
                     {
-                        auto snd = (ChunkSoundChunk*)(STAp->GetChildByName("SND"));
-                        //double samplePerFrame = (double)snd->sampleCount / (double)STAp->allFramesCount;
-                        size_t samplePerFrame = 256;
-//                        auto optimizedFrom = snd->OptimizedFrom(samplePerFrame * (STAp->skipFrameCount + 1), STAp->GetProperty("mPitch").data);
-                        auto optimizedFrom = samplePerFrame * (STAp->skipFrameCount + 1);
-//                        writeBlock(snd->GetTruncatedChunk(optimizedFrom - 0x400,
-//                                                          optimizedFrom + samplePerFrame * STAp->frameCount + 0x400),
-//                                   pitchSeg->GetProperty("SND Sample offset").offset, 0x12 + 0x800);
-                        writeBlock(snd->GetTruncatedChunk(optimizedFrom - 0x400,
-                                                          optimizedFrom + samplePerFrame * STAp->frameCount + 0x400),
-                                   pitchSeg->GetProperty("SND Sample offset").offset, 0x12 + 0x800);
-                        write32(pitchSeg->GetProperty("SND Sample count").offset, samplePerFrame * STAp->frameCount + 0x800);
+                        auto snd = (ChunkSoundChunk*)(STAp->GetChildBySignature("SND "));
+                        if (!snd) {
+                            QMessageBox::warning(this, "Missing SND", "Cannot find SND chunk in " + targetFile);
+                            delete STAp;
+                            continue;
+                        }
+                        // Use dynamic samplePerFrame like ARTp does
+                        double samplePerFrame = (double)snd->sampleCount / (double)STAp->allFramesCount;
+                        // playbackStart should be consistent with ARTp (no +1)
+                        int64_t playbackStart = samplePerFrame * STAp->skipFrameCount;
+                        int64_t sndFrom = std::max(0LL, (int64_t)(playbackStart - 0x400));
+                        int64_t sndTo = std::min((int64_t)snd->sampleCount, (int64_t)(playbackStart + samplePerFrame * STAp->frameCount + 0x400));
+                        // Recalculate after clamping
+                        int64_t actualSampleCount = sndTo - sndFrom;
+                        int64_t paddingBefore = playbackStart - sndFrom;  // samples before playback start
+                        int64_t samplesAfterPlayback = sndTo - playbackStart;  // samples from playback start to end
+
+                        // Check for edge cases that might cause noise
+                        if (paddingBefore < 0x400 || samplesAfterPlayback < samplePerFrame * STAp->frameCount + 0x400) {
+                            qWarning() << "STAp EDGE CASE:" << STAp->GetName()
+                                       << "paddingBefore:" << paddingBefore << "(expected 1024)"
+                                       << "samplesAfterPlayback:" << samplesAfterPlayback;
+                        }
+
+                        auto truncatedChunk = snd->GetTruncatedChunk(sndFrom, sndTo);
+                        // Write SND chunk to DDB
+                        // For STAp, only one offset field exists - it should point to playback start
+                        // The engine adds 2*sampleIndex to this offset, so sample 0 reads from here
+                        auto sndOffset = writeBlock(truncatedChunk,
+                                   pitchSeg->GetProperty("SND Sample offset").offset, 0x12 + paddingBefore * 2);
+                        // Sample count is samples available from playback start (for boundary checking)
+                        // Since offset_440 falls back to offset_448, boundary_end = offset_448 + 2*sampleCount
+                        write32(pitchSeg->GetProperty("SND Sample count").offset, samplesAfterPlayback);
                     }
 
                     delete STAp;
@@ -1524,8 +1551,8 @@ void MainWindow::on_actionPack_DevDB_triggered()
                         ARTu->Read(f);
                         fclose(f);
 
-                        for(auto pitch = 0; pitch < endPhoneme->Children.size(); pitch++) {
-                            auto pitchSeg = endPhoneme->Children[pitch];
+                        for(auto pitch = 0; pitch < thirdPhoneme->Children.size(); pitch++) {
+                            auto pitchSeg = thirdPhoneme->Children[pitch];
                             auto ARTp = (ChunkDBVArticulationPhUPart_DevDB*)(ARTu->Children[pitch]);
 
                             // Write SMS Frames
@@ -1537,14 +1564,31 @@ void MainWindow::on_actionPack_DevDB_triggered()
                             }
                             // Write sound chunk
                             {
-                                auto snd = (ChunkSoundChunk*)(ARTp->GetChildByName("SND"));
+                                auto snd = (ChunkSoundChunk*)(ARTp->GetChildBySignature("SND "));
+                                if (!snd) {
+                                    qWarning() << "Missing SND chunk in ARTp";
+                                    continue;
+                                }
                                 double samplePerFrame = (double)snd->sampleCount / (double)ARTp->allFramesCount;
-                                auto sndOffset =
-                                    writeBlock(snd->GetTruncatedChunk(samplePerFrame * ARTp->skipFrameCount - 0x400,
-                                                                      samplePerFrame * (ARTp->skipFrameCount + ARTp->frameCount) + 0x400),
+                                int64_t playbackStart = samplePerFrame * ARTp->skipFrameCount;
+                                int64_t sndFrom = std::max(0LL, (int64_t)(playbackStart - 0x400));
+                                int64_t sndTo = std::min((int64_t)snd->sampleCount, (int64_t)(playbackStart + samplePerFrame * ARTp->frameCount + 0x400));
+                                int64_t actualSampleCount = sndTo - sndFrom;
+                                int64_t paddingBefore = playbackStart - sndFrom;
+
+                                // Check for edge cases
+                                if (paddingBefore < 0x400) {
+                                    qWarning() << "ARTp triphoneme EDGE CASE: paddingBefore:" << paddingBefore << "(expected 1024)";
+                                }
+
+                                // Write SND chunk to DDB
+                                auto sndOffset = writeBlock(snd->GetTruncatedChunk(sndFrom, sndTo),
                                                pitchSeg->GetProperty("SND Sample offset").offset, 0x12);
-                                writeOffset(pitchSeg->GetProperty("SND Sample offset+800").offset, sndOffset + 0x12 + 0x800); // FIXME
-                                write32(pitchSeg->GetProperty("SND Sample count").offset, samplePerFrame * ARTp->frameCount + 0x800);
+                                // DDI field order: "SND Sample offset" → offset 440 (boundary), "SND Sample offset+800" → offset 448 (playback)
+                                // So "SND Sample offset" should point to data start (boundary)
+                                // And "SND Sample offset+800" should point to playback start (data start + padding)
+                                writeOffset(pitchSeg->GetProperty("SND Sample offset+800").offset, sndOffset + 0x12 + paddingBefore * 2);
+                                write32(pitchSeg->GetProperty("SND Sample count").offset, actualSampleCount);
                             }
                         }
 
@@ -1601,18 +1645,29 @@ void MainWindow::on_actionPack_DevDB_triggered()
                     }
                     // Write sound chunk
                     {
-                        auto snd = (ChunkSoundChunk*)(ARTp->GetChildByName("SND"));
-                        double samplePerFrame = (double)snd->sampleCount / (double)ARTp->allFramesCount;
-                        auto optimizedFrom = samplePerFrame * ARTp->skipFrameCount;
-                        if (ARTp->IsStartingWithVowel()) {
-                            optimizedFrom = snd->OptimizedFrom(samplePerFrame * (ARTp->skipFrameCount + 1), ARTp->GetProperty("mPitch").data);
+                        auto snd = (ChunkSoundChunk*)(ARTp->GetChildBySignature("SND "));
+                        if (!snd) {
+                            qWarning() << "Missing SND chunk in ARTp";
+                            continue;
                         }
-                        auto sndOffset =
-                            writeBlock(snd->GetTruncatedChunk(optimizedFrom - 0x400,
-                                                              optimizedFrom + samplePerFrame * ARTp->frameCount + 0x400),
+                        double samplePerFrame = (double)snd->sampleCount / (double)ARTp->allFramesCount;
+                        int64_t playbackStart = samplePerFrame * ARTp->skipFrameCount;
+                        int64_t sndFrom = std::max(0LL, (int64_t)(playbackStart - 0x400));
+                        int64_t sndTo = std::min((int64_t)snd->sampleCount, (int64_t)(playbackStart + samplePerFrame * ARTp->frameCount + 0x400));
+                        int64_t actualSampleCount = sndTo - sndFrom;
+                        int64_t paddingBefore = playbackStart - sndFrom;
+
+                        // Check for edge cases
+                        if (paddingBefore < 0x400) {
+                            qWarning() << "ARTp diphoneme EDGE CASE: paddingBefore:" << paddingBefore << "(expected 1024)";
+                        }
+
+                        // Write SND chunk to DDB
+                        auto sndOffset = writeBlock(snd->GetTruncatedChunk(sndFrom, sndTo),
                                        pitchSeg->GetProperty("SND Sample offset").offset, 0x12);
-                        writeOffset(pitchSeg->GetProperty("SND Sample offset+800").offset, sndOffset + 0x12 + 0x800); // FIXME
-                        write32(pitchSeg->GetProperty("SND Sample count").offset, samplePerFrame * ARTp->frameCount + 0x800);
+                        // DDI field order: "SND Sample offset" → offset 440 (boundary), "SND Sample offset+800" → offset 448 (playback)
+                        writeOffset(pitchSeg->GetProperty("SND Sample offset+800").offset, sndOffset + 0x12 + paddingBefore * 2);
+                        write32(pitchSeg->GetProperty("SND Sample count").offset, actualSampleCount);
                     }
                 }
 
@@ -1620,27 +1675,36 @@ void MainWindow::on_actionPack_DevDB_triggered()
             }
         }
 
-        // Add a hash segment filled with 0x0DD171EA (DDIVIEW)
+        // Build final DDI with hash segment
         ddi.seek(0);
         auto phase1Ddi = ddi.readAll();
-        QByteArray finalDdi;
 
         // Hash is after PHDC, find its end
         auto phdc = SearchForChunkByPath({ "<Phoneme Dictionary>" }); assert(phdc);
-        finalDdi.append("\0\0\0\0\0\0\0\0DBSe", 12); // Fix header; DevDB = "DBS ", DB = DBSe
-        finalDdi.append(phase1Ddi.left(phdc->GetOriginalOffset() + phdc->GetSize()).mid(12));
 
-        // 260 bytes of filler
-        QByteArray filler;
-        while (filler.size() < 260) {
-            filler.append("\x0d\xd1\x71\xea", 4);
+        // Calculate MD4 hash of the DDB file content (not DDI!)
+        // The hash covers the entire DDB file that was just written
+        ddb.seek(0);
+        QByteArray ddbContent = ddb.readAll();
+
+        QCryptographicHash md4(QCryptographicHash::Md4);
+        md4.addData(ddbContent);
+        QByteArray hashResult = md4.result().toHex(); // 32 bytes hex string (lowercase)
+
+        // Pad hash to 260 bytes with zeros (as per Vocaloid implementation)
+        QByteArray hashSegment;
+        hashSegment.append(hashResult);
+        while (hashSegment.size() < 260) {
+            hashSegment.append('\0');
         }
-        filler.resize(260);
+        hashSegment.resize(260);
 
-        finalDdi.append(filler);
-
-        // Add final parts
-        finalDdi.append(phase1Ddi.mid(phdc->GetOriginalOffset() + phdc->GetSize()));
+        // Build final DDI: header + PHDC + hash segment + rest
+        QByteArray finalDdi;
+        finalDdi.append("\0\0\0\0\0\0\0\0DBSe", 12); // Fixed header
+        finalDdi.append(phase1Ddi.left(phdc->GetOriginalOffset() + phdc->GetSize()).mid(12)); // PHDC
+        finalDdi.append(hashSegment); // 260-byte hash segment
+        finalDdi.append(phase1Ddi.mid(phdc->GetOriginalOffset() + phdc->GetSize())); // Rest of DDI
 
         ddi.seek(0);
         ddi.write(finalDdi);
@@ -1674,10 +1738,32 @@ void MainWindow::on_treeStructureDdb_currentItemChanged(QTreeWidgetItem *current
 
     auto props = chunk->GetPropertiesMap();
 
-    if (chunk->GetSignature() == "SND ") {
+    // Check both GetSignature() (from file) and ObjectSignature() (from class)
+    if (chunk->GetSignature() == "SND " || chunk->ObjectSignature() == "SND ") {
+        // Ensure DDB file is open
+        if (!mDdbFile.isOpen()) {
+            mDdbFile.setFileName(mDdbPath);
+            if (!mDdbFile.open(QFile::ReadOnly)) {
+                qWarning() << "Cannot open DDB file:" << mDdbPath;
+                return;
+            }
+        }
+
+        // Get sample data offset - use sampleOffset from ChunkRefSoundChunk if available
+        qint64 sampleDataOffset;
+        auto refSndChunk = dynamic_cast<ChunkRefSoundChunk*>(chunk);
+        if (refSndChunk) {
+            sampleDataOffset = refSndChunk->sampleOffset;
+        } else {
+            // Fallback: calculate from chunk start
+            // SND chunk: signature(4) + size(4) + sampleRate(4) + channelCount(2) + sampleCount(4) = 18 bytes header
+            sampleDataOffset = chunk->GetOriginalOffset() + 0x12;
+        }
+
         // Read sound and put it onto the customplot
-        mDdbFile.seek(chunk->GetOriginalOffset() + 0x14);
+        mDdbFile.seek(sampleDataOffset);
         mDdbStream.setDevice(&mDdbFile);
+        mDdbStream.setByteOrder(QDataStream::LittleEndian);
 
         int sampleCount, sampleRate;
         STUFF_INTO(props["Sample count"].data, sampleCount, int);
@@ -1694,7 +1780,187 @@ void MainWindow::on_treeStructureDdb_currentItemChanged(QTreeWidgetItem *current
         }
         mWaveformPlot->xAxis->setRange(0.0, sampleCount * sampleToSecFac);
         mWaveformGraph->setData(keys, vals, true);
+
+        // Clear previous section markers
+        mWaveformPlot->clearItems();
+
+        // Draw section markers if available (ARTp has sections, STAp doesn't)
+        auto pitchChunk = current->data(0, BaseChunk::DdbSoundReferredOffsetRole).value<BaseChunk*>();
+        if (pitchChunk) {
+            auto sectionsDir = pitchChunk->GetChildByName("<sections>");
+            if (sectionsDir) {
+                // Section positions are in FRAMES, not samples!
+                // Need to convert: samplePosition = framePosition * samplesPerFrame
+                const double samplesPerFrame = 256.0;
+
+                // Calculate sndFrom from offset difference (in samples)
+                int64_t sndFrom = 0;
+                auto offset440Prop = pitchChunk->GetProperty("SND Sample offset");
+                auto offset448Prop = pitchChunk->GetProperty("SND Sample offset+800");
+                if (offset440Prop.type == PropHex64 && offset448Prop.type == PropHex64) {
+                    uint64_t offset440, offset448;
+                    STUFF_INTO(offset440Prop.data, offset440, uint64_t);
+                    STUFF_INTO(offset448Prop.data, offset448, uint64_t);
+                    // paddingBefore in samples = (offset_448 - offset_440) / 2
+                    int64_t paddingBefore = (offset448 - offset440) / 2;
+                    // First section begin (in frames) tells us where playback starts
+                    if (!sectionsDir->Children.isEmpty()) {
+                        auto firstSection = sectionsDir->Children.first();
+                        auto firstProps = firstSection->GetPropertiesMap();
+                        uint32_t firstBegin;
+                        STUFF_INTO(firstProps["Entire section Begin"].data, firstBegin, uint32_t);
+                        // Convert frame to samples, then calculate sndFrom
+                        int64_t firstBeginSamples = firstBegin * samplesPerFrame;
+                        sndFrom = std::max(0LL, firstBeginSamples - paddingBefore);
+                    }
+                }
+
+                int sectionIdx = 0;
+                for (auto section : sectionsDir->Children) {
+                    auto sectionProps = section->GetPropertiesMap();
+                    uint32_t entireBegin, entireEnd, stationaryBegin, stationaryEnd;
+                    STUFF_INTO(sectionProps["Entire section Begin"].data, entireBegin, uint32_t);
+                    STUFF_INTO(sectionProps["Entire section End"].data, entireEnd, uint32_t);
+                    STUFF_INTO(sectionProps["Stationary section Begin"].data, stationaryBegin, uint32_t);
+                    STUFF_INTO(sectionProps["Stationary section End"].data, stationaryEnd, uint32_t);
+
+                    // Convert frames to samples, then adjust for truncation
+                    double adjEntireBegin = (entireBegin * samplesPerFrame - sndFrom) * sampleToSecFac;
+                    double adjEntireEnd = (entireEnd * samplesPerFrame - sndFrom) * sampleToSecFac;
+                    double adjStaBegin = (stationaryBegin * samplesPerFrame - sndFrom) * sampleToSecFac;
+                    double adjStaEnd = (stationaryEnd * samplesPerFrame - sndFrom) * sampleToSecFac;
+
+                    // Draw entire section boundaries (red)
+                    auto lineEntireBegin = new QCPItemLine(mWaveformPlot);
+                    lineEntireBegin->start->setCoords(adjEntireBegin, -1);
+                    lineEntireBegin->end->setCoords(adjEntireBegin, 1);
+                    lineEntireBegin->setPen(QPen(Qt::red, 1, Qt::DashLine));
+
+                    auto lineEntireEnd = new QCPItemLine(mWaveformPlot);
+                    lineEntireEnd->start->setCoords(adjEntireEnd, -1);
+                    lineEntireEnd->end->setCoords(adjEntireEnd, 1);
+                    lineEntireEnd->setPen(QPen(Qt::red, 1, Qt::DashLine));
+
+                    // Draw stationary section boundaries (green) if different from entire
+                    if (stationaryBegin != entireBegin || stationaryEnd != entireEnd) {
+                        auto lineStaBegin = new QCPItemLine(mWaveformPlot);
+                        lineStaBegin->start->setCoords(adjStaBegin, -1);
+                        lineStaBegin->end->setCoords(adjStaBegin, 1);
+                        lineStaBegin->setPen(QPen(Qt::green, 1, Qt::SolidLine));
+
+                        auto lineStaEnd = new QCPItemLine(mWaveformPlot);
+                        lineStaEnd->start->setCoords(adjStaEnd, -1);
+                        lineStaEnd->end->setCoords(adjStaEnd, 1);
+                        lineStaEnd->setPen(QPen(Qt::green, 1, Qt::SolidLine));
+                    }
+
+                    // Add section label
+                    auto label = new QCPItemText(mWaveformPlot);
+                    label->position->setCoords((adjEntireBegin + adjEntireEnd) / 2.0, 0.9);
+                    label->setText(QString("S%1").arg(sectionIdx));
+                    label->setFont(QFont(font().family(), 8));
+                    label->setColor(Qt::red);
+
+                    sectionIdx++;
+                }
+            }
+        }
+
         mWaveformPlot->replot();
     }
+}
+
+
+void MainWindow::on_actionVqmGenerator_triggered()
+{
+    VqmGeneratorDialog dlg(this);
+    if (dlg.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    QString wavPath = dlg.GetWavPath();
+    QString outputDir = dlg.GetOutputDir();
+    QString sampleName = dlg.GetSampleName();
+    double pitch = dlg.GetPitch();
+    double beginTime = dlg.GetBeginTime();
+    double endTime = dlg.GetEndTime();
+    int frameRate = dlg.GetFrameRate();
+    int maxHarmonics = dlg.GetMaxHarmonics();
+
+    if (wavPath.isEmpty() || outputDir.isEmpty() || sampleName.isEmpty()) {
+        QMessageBox::warning(this, tr("Missing Information"),
+                             tr("Please fill in all required fields."));
+        return;
+    }
+
+    // Create VQM subdirectory
+    QString vqmDir = outputDir + "/VQM";
+    QDir().mkpath(vqmDir);
+
+    // Progress dialog
+    QProgressDialog progDlg(tr("Generating VQM files..."), tr("Cancel"), 0, 4, this);
+    progDlg.setWindowModality(Qt::WindowModal);
+    progDlg.setMinimumDuration(0);
+    progDlg.show();
+
+    // Step 1: Analyze WAV
+    progDlg.setLabelText(tr("Analyzing WAV file..."));
+    progDlg.setValue(0);
+
+    SmsGenerator generator;
+    if (!generator.analyzeWav(wavPath, frameRate, maxHarmonics, beginTime, endTime)) {
+        QMessageBox::critical(this, tr("Analysis Failed"),
+                              tr("Failed to analyze WAV file:\n%1").arg(generator.getError()));
+        return;
+    }
+
+    if (progDlg.wasCanceled()) return;
+
+    // Step 2: Write SMS file
+    progDlg.setLabelText(tr("Writing SMS file..."));
+    progDlg.setValue(1);
+
+    QString smsPath = vqmDir + "/" + sampleName + ".sms";
+    if (!generator.writeSms(smsPath)) {
+        QMessageBox::critical(this, tr("Write Failed"),
+                              tr("Failed to write SMS file:\n%1").arg(generator.getError()));
+        return;
+    }
+
+    if (progDlg.wasCanceled()) return;
+
+    // Step 3: Copy WAV file
+    progDlg.setLabelText(tr("Copying WAV file..."));
+    progDlg.setValue(2);
+
+    QString dstWavPath = vqmDir + "/" + sampleName + ".wav";
+    if (!SmsGenerator::copyWav(wavPath, dstWavPath)) {
+        QMessageBox::critical(this, tr("Copy Failed"),
+                              tr("Failed to copy WAV file to output directory."));
+        return;
+    }
+
+    if (progDlg.wasCanceled()) return;
+
+    // Step 4: Write VQM.ini
+    progDlg.setLabelText(tr("Writing VQM.ini..."));
+    progDlg.setValue(3);
+
+    QString iniPath = outputDir + "/vqm.ini";
+    QString wavFilename = sampleName + ".wav";
+    if (!SmsGenerator::writeVqmIni(iniPath, sampleName, beginTime, endTime, pitch, wavFilename)) {
+        QMessageBox::critical(this, tr("Write Failed"),
+                              tr("Failed to write VQM.ini file."));
+        return;
+    }
+
+    progDlg.setValue(4);
+
+    QMessageBox::information(this, tr("VQM Generation Complete"),
+                             tr("VQM files generated successfully:\n\n"
+                                "SMS: %1\n"
+                                "WAV: %2\n"
+                                "INI: %3")
+                             .arg(smsPath, dstWavPath, iniPath));
 }
 

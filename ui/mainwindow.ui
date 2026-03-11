@@ -249,6 +249,8 @@
      <string>Special</string>
     </property>
     <addaction name="actionPack_DevDB"/>
+    <addaction name="separator"/>
+    <addaction name="actionVqmGenerator"/>
    </widget>
    <addaction name="menuOpen"/>
    <addaction name="menuStatistics"/>
@@ -303,6 +305,14 @@
   <action name="actionPack_DevDB">
    <property name="text">
     <string>Pack DevDB</string>
+   </property>
+  </action>
+  <action name="actionVqmGenerator">
+   <property name="text">
+    <string>VQM Generator...</string>
+   </property>
+   <property name="toolTip">
+    <string>Generate VQM (Growl) files from WAV audio</string>
    </property>
   </action>
  </widget>

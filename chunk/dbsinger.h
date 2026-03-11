@@ -17,7 +17,7 @@ public:
     virtual void Read(FILE* file) {
         ReadBlockSignature(file);
         ReadArrayHead(file);
-        CHUNK_READPROP("unk6", 4);
+        CHUNK_TREADPROP("Version", 4, PropU32Int);  // database version (1=V2, 2=V3/V4/V5)
 
         {
             // Emulate Vocaloid behavior
@@ -25,7 +25,7 @@ public:
 
             CHUNK_READCHILD(ChunkPhonemeDict, this);
             if (!BaseChunk::DevDb) {
-                CHUNK_READPROP("Hash store", 260);
+                CHUNK_READPROP("HashStore", 260);   // hash verification data
             }
         }
 

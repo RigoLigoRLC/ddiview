@@ -15,7 +15,7 @@ public:
     virtual void Read(FILE *file) {
         ReadBlockSignature(file);
         ReadArrayHead(file);
-        CHUNK_READPROP("unk1", 4);
+        CHUNK_TREADPROP("ModelIndex", 4, PropU32Int);  // model index
         ReadArrayBody(file, 0);
         ReadStringName(file);
     }
