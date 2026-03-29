@@ -78,7 +78,7 @@ public:
         for (size_t ii = 0; ii < frameCount; ii++) {
             auto frame = new ChunkSMSFrameChunk;
             frame->Read(file);
-            frame->SetName(QString("Frame %1").arg(ii, 5, QChar('0')));
+            frame->SetName(QString("Frame %1").arg(ii, 5, u'0'));
             Children.append(frame);
         }
     }

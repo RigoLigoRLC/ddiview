@@ -109,9 +109,10 @@ void MainWindow::BuildDdb(QProgressDialog *dlg)
     BaseChunk::HasLeadingQword = false;
     while (true) {
         char sig[5] = {0, 0, 0, 0, 0};
-        assert(myftell64(f) > lastOffset || lastOffset == -1);
+        auto pos = myftell64(f);
+        assert(pos > lastOffset || lastOffset == -1);
 
-        if (myftell64(f) >= length) {
+        if (pos >= length) {
             break;
         }
 
@@ -1476,17 +1477,22 @@ void MainWindow::on_actionPack_DevDB_triggered()
                     // Write sound chunk
                     {
                         auto snd = (ChunkSoundChunk*)(STAp->GetChildByName("SND"));
-                        //double samplePerFrame = (double)snd->sampleCount / (double)STAp->allFramesCount;
+//                         //double samplePerFrame = (double)snd->sampleCount / (double)STAp->allFramesCount;
+// //                        auto optimizedFrom = snd->OptimizedFrom(samplePerFrame * (STAp->skipFrameCount + 1), STAp->GetProperty("mPitch").data);
+//                         auto optimizedFrom = samplePerFrame * (STAp->skipFrameCount + 1);
+// //                        writeBlock(snd->GetTruncatedChunk(optimizedFrom - 0x400,
+// //                                                          optimizedFrom + samplePerFrame * STAp->frameCount + 0x400),
+// //                                   pitchSeg->GetProperty("SND Sample offset").offset, 0x12 + 0x800);
+//                         writeBlock(snd->GetTruncatedChunk(optimizedFrom - 0x400,
+//                                                           optimizedFrom + samplePerFrame * STAp->frameCount + 0x400),
+//                                    pitchSeg->GetProperty("SND Sample offset").offset, 0x12 + 0x800);
+                        // write32(pitchSeg->GetProperty("SND Sample count").offset, samplePerFrame * STAp->frameCount + 0x800);
+
                         size_t samplePerFrame = 256;
-//                        auto optimizedFrom = snd->OptimizedFrom(samplePerFrame * (STAp->skipFrameCount + 1), STAp->GetProperty("mPitch").data);
-                        auto optimizedFrom = samplePerFrame * (STAp->skipFrameCount + 1);
-//                        writeBlock(snd->GetTruncatedChunk(optimizedFrom - 0x400,
-//                                                          optimizedFrom + samplePerFrame * STAp->frameCount + 0x400),
-//                                   pitchSeg->GetProperty("SND Sample offset").offset, 0x12 + 0x800);
-                        writeBlock(snd->GetTruncatedChunk(optimizedFrom - 0x400,
-                                                          optimizedFrom + samplePerFrame * STAp->frameCount + 0x400),
-                                   pitchSeg->GetProperty("SND Sample offset").offset, 0x12 + 0x800);
-                        write32(pitchSeg->GetProperty("SND Sample count").offset, samplePerFrame * STAp->frameCount + 0x800);
+                        size_t fromSample = samplePerFrame * STAp->skipFrameCount;
+                        size_t toSample = fromSample + samplePerFrame * STAp->frameCount;
+                        writeBlock(snd->GetTruncatedChunk(fromSample, toSample), pitchSeg->GetProperty("SND Sample offset").offset, 0x12);
+                        write32(pitchSeg->GetProperty("SND Sample count").offset, samplePerFrame * STAp->frameCount);
                     }
 
                     delete STAp;
